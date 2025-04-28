@@ -4,7 +4,6 @@ import random
 from datetime import datetime
 from Utilities import slippage
 from numba_calculations import calculate_ema, calculate_sma, calculate_ema_slope, calculate_atr
-from numba import njit
 from vectorized_calculations import vectorized_atr
 
 mid_time = datetime.strptime("12:30", "%H:%M").time()
@@ -22,63 +21,33 @@ def read_from_csv(symbol: str, path='hist\\5min\\'):
     volume = data['Volume']
     return symbol, dates, times, opens, highs, lows, closes, volume
 
-@njit
-def calculate_qty(margin: float, sl: float, price: float, risk_amount : float=0.02) -> int:
-    risk_per_trade = margin * risk_amount
-    qty = min(risk_per_trade / sl, margin / price)
-    return int(qty)
-
 def run(*args, **kwargs):
     symbol, dates, times, opens, highs, lows, closes, volume = args
-    
-    f = open(f"results/{symbol}_debug.txt", 'w')
 
-    # Constant parameters
     DEBUG = True
-    
     CONFIRM_EMA = True
     CONFIRM_EMA_SLOPE = True
     ENABLED_TRAILING = True
-    CONFIRM_VOLUME = True
-    CONFIRM_ATR = True
-    
     EMA_PERIOD = 20
     EMA_SLOPE_PERIOD = 15
     TRAIL_AMOUNT = 0.6
-    AVG_VOL_SPAN = 20
-    ATR_PERIOD = 14
+    CONFIRM_VOLUME = True
     
-    ATR_SL_MULTIPLIER = kwargs.get('ATR_SL_MULTIPLIER', 2.5)
-    ATR_TP_MULTIPLIER = kwargs.get('ATR_TP_MULTIPLIER', 2.2)
+    SL_MULTIPLIER = 2.5
+    TP_MULTIPLIER = 3.0
     
-    VOL_MULTIPLIER = 1.5
-    
-    def should_trade_based_on_ema(current_price :float, last_ema :float, last_ema_slope :float, side :str="long") -> bool:
-        if not CONFIRM_EMA:
-            return True
-        if not last_ema or not last_ema_slope:
-            return False
-        if side == "long":
-            return last_ema < current_price and (last_ema_slope > 0 if CONFIRM_EMA_SLOPE else True)
-        elif side == "short":
-            return last_ema > current_price and (last_ema_slope < 0 if CONFIRM_EMA_SLOPE else True)
-        
-        return False
-    
-    def should_trade_based_on_vol(current_vol :int, avg_vol :int) -> bool:
-        if not CONFIRM_VOLUME:
-            return True
-        if not current_vol or not avg_vol:
-            return False
-        return current_vol > VOL_MULTIPLIER * avg_vol
+    f = open(f"results/{symbol}_debug.txt", 'w')
 
     Margin = kwargs.get('Margin', 100000)
 
-    avg_vol = calculate_ema(volume, AVG_VOL_SPAN)
+    vol_span = 20
+    vol_ema = calculate_ema(volume, vol_span)
+
+    # Calculate 20-day EMA
     ema = calculate_ema(closes, EMA_PERIOD) if CONFIRM_EMA else np.zeros_like(closes)
-    ema_slope = calculate_ema_slope(ema, EMA_SLOPE_PERIOD, method='simple') if CONFIRM_EMA and CONFIRM_EMA_SLOPE else np.zeros_like(closes)
-    atr = vectorized_atr(highs, lows, closes, ATR_PERIOD) if CONFIRM_ATR else np.zeros_like(closes)
-    
+    ema_slope = calculate_ema_slope(ema, EMA_SLOPE_PERIOD) if CONFIRM_EMA and CONFIRM_EMA_SLOPE else np.zeros_like(closes)
+    atr = vectorized_atr(highs, lows, closes)
+
     # Group data by date
     unique_dates = np.unique(dates)
     net_pl = 0
@@ -92,14 +61,19 @@ def run(*args, **kwargs):
         # Get data for the current date
         date_mask = dates == current_date
         date_indices = np.where(date_mask)[0]
+        date_open = opens[date_mask]
         date_highs = highs[date_mask]
         date_lows = lows[date_mask]
         date_closes = closes[date_mask]
         date_volume = volume[date_mask]
         date_ema = ema[date_mask]
         date_ema_slope = ema_slope[date_mask]
-        date_avg_vol = avg_vol[date_mask]
+        date_volume_ema = vol_ema[date_mask]
         date_atr = atr[date_mask]
+        
+        # sl_adjustment = date_closes[0]
+
+        # print(date_indices)
 
         # Compute initial 15m high and low
         init_15m_high = np.max(date_highs[:3])
@@ -124,12 +98,15 @@ def run(*args, **kwargs):
             prev_close = date_closes[idx-1]
             
             current_volume = date_volume[idx]
-            last_ema = date_ema[idx-1]
-            last_ema_slope = date_ema_slope[idx-1]
-            current_avg_vol = date_avg_vol[idx-1]
+            current_ema = date_ema[idx-1]
+            current_ema_slope = date_ema_slope[idx-1]
+            current_volume_ema = date_volume_ema[idx-1]
             current_atr = date_atr[idx - 1]
             
             current_time = times[date_indices[idx]]
+            
+            # if DEBUG:
+            #     print(current_atr)
 
             if current_time >= mid_time and not positioned:
                 break
@@ -147,53 +124,47 @@ def run(*args, **kwargs):
                 break
 
             # Long entry conditions
-            if ((current_high > init_15m_high and not positioned) # original condition
-                and should_trade_based_on_ema(prev_close, last_ema, last_ema_slope) # ema condition
-                and should_trade_based_on_vol(current_volume, current_avg_vol) # volume condition
-                ):
-                ABS_SL = ATR_SL_MULTIPLIER * current_atr
-                ABS_TP = ATR_TP_MULTIPLIER * current_atr
+            if current_high >= init_15m_high and not positioned and (current_ema < prev_close and current_ema_slope > 0 if CONFIRM_EMA else True) and (current_volume > 1.5 * current_volume_ema if CONFIRM_VOLUME else True):
+                # SL = prev_low if consider_SL == "Previous" else current_low
+                # TP = init_15m_high_rounded + RR * (init_15m_high - SL) - current_open * tp_adjustment
+                # SL -= current_open * sl_adjustment
+                ABS_SL = SL_MULTIPLIER * current_atr
+                ABS_TP = TP_MULTIPLIER * current_atr
                 entry_price = random.uniform(init_15m_high, (init_15m_high + current_close)/2)
-                # no_of_long_shares = int(Margin/entry_price)
-                no_of_long_shares = calculate_qty(Margin, ABS_SL, entry_price)
+                no_of_long_shares = int(Margin/entry_price)
                 SL = entry_price - ABS_SL
                 TP = entry_price + ABS_TP
-                if ABS_TP >= 0.5 and ABS_SL >= 0.5:
+                if ABS_SL >= 0.5 and ABS_TP >= 0.5:
                     positioned = True
                     position = "Long"
                     rounded_TP = slippage(TP)
                     rounded_SL = slippage(SL)
                     no_of_trades += 1
                     if DEBUG:
-                        print(f"{current_date} Long entry at {current_time} @{entry_price:.2f}, qty: {no_of_long_shares}, SL: {SL:.2f}, TP: {TP:.2f}", file=f)
+                        print(f"{current_date} Long entry at {current_time}, SL: {SL}, TP: {TP}", file=f)
                 else:
                     print("Rejecting trade due to small sl/tp", file=f) if DEBUG else None
                     continue
 
             # Short entry conditions
-            elif ((current_low < init_15m_low and not positioned) # original condition
-                and should_trade_based_on_ema(prev_close, last_ema, last_ema_slope, "short") # ema condition
-                and should_trade_based_on_vol(current_volume, current_avg_vol) # volume condition
-                ):
+            elif current_low <= init_15m_low and not positioned and (current_ema > prev_close and current_ema_slope < 0 if CONFIRM_EMA else True) and (current_volume > 1.5 * current_volume_ema if CONFIRM_VOLUME else True):
                 # SL = prev_high if consider_SL == "Previous" else current_high
                 # TP = init_15m_low_rounded - RR * (SL - init_15m_low) + current_open * tp_adjustment
                 # SL += current_open * sl_adjustment
-                ABS_SL = ATR_SL_MULTIPLIER * current_atr
-                ABS_TP = ATR_TP_MULTIPLIER * current_atr
+                ABS_SL = SL_MULTIPLIER * current_atr
+                ABS_TP = TP_MULTIPLIER * current_atr
                 entry_price = random.uniform((init_15m_low + current_close)/2, init_15m_low)
-                # no_of_short_shares = int(Margin/entry_price)
-                no_of_short_shares = calculate_qty(Margin, ABS_SL, entry_price)
+                no_of_short_shares = int(Margin/entry_price)
                 SL = entry_price + ABS_SL
                 TP = entry_price - ABS_TP
-                # no_of_short_shares = calculate_qty(Margin, ABS_SL, RISK_AMOUNT)
-                if ABS_TP >= 0.5 and ABS_SL >= 0.5:
+                if ABS_SL >= 0.5 and ABS_TP >= 0.5:
                     positioned = True
                     position = "Short"
                     rounded_TP = slippage(TP)
                     rounded_SL = slippage(SL)
                     no_of_trades += 1
                     if DEBUG:
-                        print(f"{current_date} Short entry at {current_time} @{entry_price:.2f}, qty: {no_of_short_shares}, SL: {SL:.2f}, TP: {TP:.2f}", file=f)
+                        print(f"{current_date} Short entry at {current_time}, SL: {SL}, TP: {TP}", file=f)
                 else:
                     print("Rejecting trade due to small sl/tp", file=f) if DEBUG else None
                     continue
@@ -254,10 +225,9 @@ def run(*args, **kwargs):
     rounded_net_pl = round(net_pl, 2)
     rounded_wins_pct = round(wins*100/no_of_trades, 2) if no_of_trades > 0 else 0.0
     if DEBUG:
-        print(f"{symbol} Net PL: {rounded_net_pl} ({net_pl/1000:.2f}%), Days: {days}, Total Trades: {no_of_trades}, Wins: {wins} ({rounded_wins_pct}%)\n", file=f)
+        print(f"{symbol} Net PL: {rounded_net_pl} ({net_pl/1000:.2f}%), Days: {days}, Total Trades: {no_of_trades}, Wins: {wins} ({rounded_wins_pct}%)\n\n", file=f)
 
     f.close()
-    
     return symbol, rounded_net_pl, rounded_wins_pct
 
 

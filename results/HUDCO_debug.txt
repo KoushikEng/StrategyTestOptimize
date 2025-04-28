@@ -1,0 +1,307 @@
+Rejecting trade due to small sl/tp
+2025-01-13 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-01-14 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-01-15 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-01-16 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-01-17 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-01-20 Daily PL: 0
+
+2025-01-21 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-01-22 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-01-23 Short entry at 11:20:00 @221.98, qty: 450, SL: 222.73, TP: 221.31
+11:20:00 updated Trail SL: 219.66
+11:25:00 updated Trail SL: 218.71
+11:30:00 updated Trail SL: 217.6
+11:35:00 SL hit at 217.6
+2025-01-23 Daily PL: 1985.49
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-01-24 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-01-27 Short entry at 09:55:00 @210.91, qty: 483, SL: 211.51, TP: 210.38
+09:55:00 updated Trail SL: 208.65
+10:00:00 updated Trail SL: 208.32
+10:05:00 SL hit at 208.32
+2025-01-27 Daily PL: 1262.6
+
+Rejecting trade due to small sl/tp
+2025-01-28 Daily PL: 0
+
+2025-01-29 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-01-30 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-01-31 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-02-01 Long entry at 10:55:00 @235.21, qty: 438, SL: 234.22, TP: 236.08
+10:55:00 updated Trail SL: 240.04
+11:00:00 SL hit at 240.04
+2025-02-01 Daily PL: 2114.71
+
+2025-02-03 Short entry at 09:30:00 @205.71, qty: 512, SL: 206.30, TP: 205.19
+09:30:00 updated Trail SL: 204.6
+09:35:00 updated Trail SL: 201.45
+09:40:00 updated Trail SL: 200.79999999999998
+09:45:00 SL hit at 200.79999999999998
+2025-02-03 Daily PL: 2532.61
+
+2025-02-04 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-02-05 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-02-06 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-02-07 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-02-10 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-02-11 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-02-12 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-02-13 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-02-14 Daily PL: 0
+
+2025-02-17 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-02-18 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-02-19 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-02-20 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-02-21 Daily PL: 0
+
+2025-02-24 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-02-25 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-02-27 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-02-28 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-03-03 Daily PL: 0
+
+2025-03-04 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-03-05 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-03-06 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-03-07 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-03-10 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-03-11 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-03-12 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-03-13 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-03-17 Daily PL: 0
+
+2025-03-18 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-03-19 Daily PL: 0
+
+2025-03-20 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-03-21 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-03-24 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-03-25 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-03-26 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-03-27 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-03-28 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-04-01 Daily PL: 0
+
+2025-04-02 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-04-03 Daily PL: 0
+
+2025-04-04 Daily PL: 0
+
+2025-04-07 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-04-08 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-04-09 Daily PL: 0
+
+2025-04-11 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-04-15 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-04-16 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-04-17 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-04-21 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-04-22 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-04-23 Daily PL: 0
+
+HUDCO Net PL: 7895.4 (7.90%), Days: 68, Total Trades: 4, Wins: 4 (100.0%)
+

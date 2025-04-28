@@ -1,0 +1,322 @@
+2025-01-13 Short entry at 11:50:00 @7590.64, qty: 13, SL: 7594.31, TP: 7587.41
+11:50:00 updated Trail SL: 7435.05
+11:55:00 SL hit at 7435.05
+2025-01-13 Daily PL: 2022.67
+
+2025-01-14 Long entry at 11:00:00 @7450.61, qty: 13, SL: 7444.18, TP: 7456.27
+11:00:00 updated Trail SL: 7539.4
+11:05:00 SL hit at 7539.4
+2025-01-14 Daily PL: 1154.14
+
+2025-01-15 Long entry at 12:00:00 @7489.21, qty: 13, SL: 7486.13, TP: 7491.92
+12:00:00 updated Trail SL: 7512.9
+12:05:00 SL hit at 7512.9
+2025-01-15 Daily PL: 307.65
+
+2025-01-16 Long entry at 10:45:00 @7718.25, qty: 13, SL: 7717.14, TP: 7719.24
+10:45:00 updated Trail SL: 7743.7
+10:50:00 SL hit at 7743.7
+2025-01-16 Daily PL: 330.63
+
+2025-01-17 Long entry at 11:35:00 @7741.67, qty: 13, SL: 7736.77, TP: 7745.98
+11:35:00 updated Trail SL: 7748.9
+11:40:00 SL hit at 7748.9
+2025-01-17 Daily PL: 94.49
+
+2025-01-20 Daily PL: 0
+
+2025-01-21 Short entry at 09:30:00 @7529.81, qty: 13, SL: 7539.16, TP: 7521.59
+09:30:00 updated Trail SL: 7477.450000000001
+09:35:00 SL hit at 7477.450000000001
+2025-01-21 Daily PL: 680.07
+
+2025-01-22 Short entry at 10:45:00 @7409.22, qty: 14, SL: 7413.31, TP: 7405.62
+10:45:00 updated Trail SL: 7360.650000000001
+10:50:00 updated Trail SL: 7314.8
+10:55:00 SL hit at 7314.8
+2025-01-22 Daily PL: 1321.45
+
+2025-01-23 Long entry at 11:55:00 @7428.34, qty: 14, SL: 7425.52, TP: 7430.83
+11:55:00 updated Trail SL: 7602.799999999999
+12:00:00 SL hit at 7602.799999999999
+2025-01-23 Daily PL: 2442.33
+
+2025-01-24 Daily PL: 0
+
+2025-01-27 Short entry at 10:45:00 @7196.46, qty: 15, SL: 7198.03, TP: 7195.07
+10:45:00 updated Trail SL: 7162.900000000001
+10:50:00 SL hit at 7162.900000000001
+2025-01-27 Daily PL: 502.64
+
+2025-01-28 Daily PL: 0
+
+2025-01-29 Long entry at 11:10:00 @7311.81, qty: 14, SL: 7309.46, TP: 7313.87
+11:10:00 updated Trail SL: 7417.349999999999
+11:15:00 SL hit at 7417.349999999999
+2025-01-29 Daily PL: 1477.56
+
+2025-01-30 Long entry at 10:15:00 @7574.03, qty: 14, SL: 7572.06, TP: 7575.75
+10:15:00 updated Trail SL: 7623.2
+10:20:00 SL hit at 7623.2
+2025-01-30 Daily PL: 687.85
+
+2025-01-31 Daily PL: 0
+
+2025-02-01 Short entry at 11:00:00 @7713.69, qty: 14, SL: 7714.72, TP: 7712.77
+11:00:00 updated Trail SL: 7635.35
+11:05:00 SL hit at 7635.35
+2025-02-01 Daily PL: 1096.19
+
+2025-02-03 Long entry at 10:15:00 @7844.25, qty: 14, SL: 7838.94, TP: 7848.92
+10:15:00 updated Trail SL: 7873.45
+10:20:00 SL hit at 7873.45
+2025-02-03 Daily PL: 409.23
+
+2025-02-04 Short entry at 10:35:00 @7736.68, qty: 14, SL: 7740.48, TP: 7733.33
+10:35:00 updated Trail SL: 7648.900000000001
+10:40:00 updated Trail SL: 7644.200000000001
+10:45:00 updated Trail SL: 7635.5
+10:50:00 SL hit at 7635.5
+2025-02-04 Daily PL: 1416.02
+
+2025-02-05 Long entry at 10:35:00 @7835.33, qty: 14, SL: 7831.53, TP: 7838.67
+10:35:00 updated Trail SL: 7894.4
+10:40:00 SL hit at 7894.4
+2025-02-05 Daily PL: 827.61
+
+2025-02-06 Short entry at 11:30:00 @8014.96, qty: 14, SL: 8018.47, TP: 8011.86
+11:30:00 updated Trail SL: 8007.25
+11:35:00 SL hit at 8007.25
+2025-02-06 Daily PL: 107.38
+
+2025-02-07 Short entry at 10:30:00 @7926.30, qty: 14, SL: 7934.66, TP: 7918.95
+10:30:00 updated Trail SL: 7863.05
+10:35:00 updated Trail SL: 7863.05
+10:40:00 SL hit at 7863.05
+2025-02-07 Daily PL: 886.25
+
+2025-02-10 Short entry at 12:00:00 @7772.96, qty: 14, SL: 7777.80, TP: 7768.70
+12:00:00 SL hit at 7777.800072824675
+2025-02-10 Daily PL: -68.38
+
+2025-02-11 Short entry at 10:45:00 @7660.79, qty: 15, SL: 7663.57, TP: 7658.35
+10:45:00 updated Trail SL: 7570.6
+10:50:00 updated Trail SL: 7554.25
+10:55:00 updated Trail SL: 7548.400000000001
+11:00:00 updated Trail SL: 7531.650000000001
+11:05:00 updated Trail SL: 7531.650000000001
+11:10:00 SL hit at 7531.650000000001
+2025-02-11 Daily PL: 1937.01
+
+2025-02-12 Short entry at 10:10:00 @7453.93, qty: 15, SL: 7459.64, TP: 7448.91
+10:10:00 updated Trail SL: 7427.400000000001
+10:15:00 updated Trail SL: 7427.150000000001
+10:20:00 SL hit at 7427.150000000001
+2025-02-12 Daily PL: 401.65
+
+2025-02-13 Long entry at 09:45:00 @7646.47, qty: 15, SL: 7641.09, TP: 7651.20
+09:45:00 updated Trail SL: 7667.25
+09:50:00 updated Trail SL: 7673.9
+09:55:00 updated Trail SL: 7677.15
+10:00:00 updated Trail SL: 7679.2
+10:05:00 SL hit at 7679.2
+2025-02-13 Daily PL: 491.66
+
+2025-02-14 Short entry at 10:35:00 @7531.28, qty: 15, SL: 7533.71, TP: 7529.15
+10:35:00 updated Trail SL: 7514.85
+10:40:00 updated Trail SL: 7482.200000000001
+10:45:00 updated Trail SL: 7465.0
+10:50:00 SL hit at 7465.0
+2025-02-14 Daily PL: 993.94
+
+2025-02-17 Daily PL: 0
+
+2025-02-18 Daily PL: 0
+
+2025-02-19 Daily PL: 0
+
+2025-02-20 Daily PL: 0
+
+2025-02-21 Daily PL: 0
+
+2025-02-24 Short entry at 11:45:00 @7357.41, qty: 16, SL: 7362.14, TP: 7353.25
+11:45:00 updated Trail SL: 7243.150000000001
+11:50:00 SL hit at 7243.150000000001
+2025-02-24 Daily PL: 1828.23
+
+2025-02-25 Daily PL: 0
+
+2025-02-27 Daily PL: 0
+
+2025-02-28 Short entry at 10:10:00 @7039.56, qty: 17, SL: 7048.73, TP: 7031.49
+10:10:00 updated Trail SL: 6955.950000000001
+10:15:00 SL hit at 6955.950000000001
+2025-02-28 Daily PL: 1420.54
+
+2025-03-03 Short entry at 12:10:00 @6955.28, qty: 17, SL: 6958.67, TP: 6952.31
+12:10:00 updated Trail SL: 6815.6
+12:15:00 SL hit at 6815.6
+2025-03-03 Daily PL: 2375.27
+
+2025-03-04 Daily PL: 0
+
+2025-03-05 Short entry at 11:00:00 @6760.27, qty: 18, SL: 6763.08, TP: 6757.80
+11:00:00 updated Trail SL: 6747.0
+11:05:00 updated Trail SL: 6736.35
+11:10:00 updated Trail SL: 6725.6
+11:15:00 updated Trail SL: 6722.1
+11:20:00 SL hit at 6722.1
+2025-03-05 Daily PL: 687.91
+
+2025-03-06 Daily PL: 0
+
+2025-03-07 Short entry at 12:00:00 @6836.82, qty: 18, SL: 6841.28, TP: 6832.90
+12:00:00 updated Trail SL: 6832.05
+12:05:00 updated Trail SL: 6828.1
+12:10:00 updated Trail SL: 6818.450000000001
+12:15:00 updated Trail SL: 6800.6
+12:20:00 updated Trail SL: 6800.6
+12:25:00 updated Trail SL: 6800.6
+12:30:00 SL hit at 6800.6
+2025-03-07 Daily PL: 651.46
+
+2025-03-10 Short entry at 11:00:00 @6747.76, qty: 18, SL: 6751.08, TP: 6744.84
+11:00:00 updated Trail SL: 6715.150000000001
+11:05:00 updated Trail SL: 6710.6
+11:10:00 SL hit at 6710.6
+2025-03-10 Daily PL: 668.96
+
+2025-03-11 Long entry at 12:10:00 @6572.71, qty: 19, SL: 6571.18, TP: 6574.07
+12:10:00 updated Trail SL: 6590.799999999999
+12:15:00 updated Trail SL: 6593.549999999999
+12:20:00 SL hit at 6593.549999999999
+2025-03-11 Daily PL: 396.79
+
+2025-03-12 Short entry at 09:55:00 @6623.20, qty: 19, SL: 6627.25, TP: 6619.65
+09:55:00 updated Trail SL: 6577.450000000001
+10:00:00 updated Trail SL: 6560.900000000001
+10:05:00 SL hit at 6560.900000000001
+2025-03-12 Daily PL: 1183.71
+
+2025-03-13 Daily PL: 0
+
+2025-03-17 Daily PL: 0
+
+2025-03-18 Long entry at 11:20:00 @6583.07, qty: 19, SL: 6581.51, TP: 6584.44
+11:20:00 updated Trail SL: 6592.65
+11:25:00 SL hit at 6592.65
+2025-03-18 Daily PL: 182.5
+
+2025-03-19 Long entry at 12:25:00 @6723.64, qty: 19, SL: 6721.48, TP: 6725.53
+12:25:00 updated Trail SL: 6743.4
+12:30:00 updated Trail SL: 6756.849999999999
+12:35:00 SL hit at 6756.849999999999
+2025-03-19 Daily PL: 630.55
+
+2025-03-20 Short entry at 11:30:00 @6779.87, qty: 19, SL: 6782.98, TP: 6777.13
+11:30:00 updated Trail SL: 6748.150000000001
+11:35:00 SL hit at 6748.150000000001
+2025-03-20 Daily PL: 602.61
+
+2025-03-21 Long entry at 09:30:00 @6881.28, qty: 18, SL: 6864.99, TP: 6895.61
+09:30:00 SL hit at 6864.991760459778
+2025-03-21 Daily PL: -292.34
+
+2025-03-24 Long entry at 10:30:00 @7069.96, qty: 18, SL: 7067.67, TP: 7071.98
+10:30:00 updated Trail SL: 7075.049999999999
+10:35:00 SL hit at 7075.049999999999
+2025-03-24 Daily PL: 92.45
+
+2025-03-25 Long entry at 09:30:00 @7337.67, qty: 17, SL: 7330.11, TP: 7344.32
+09:30:00 updated Trail SL: 7374.099999999999
+09:35:00 updated Trail SL: 7384.4
+09:40:00 updated Trail SL: 7403.4
+09:45:00 updated Trail SL: 7429.299999999999
+09:50:00 SL hit at 7429.299999999999
+2025-03-25 Daily PL: 1558.03
+
+2025-03-26 Short entry at 12:25:00 @7088.69, qty: 18, SL: 7091.02, TP: 7086.64
+12:25:00 updated Trail SL: 7075.5
+12:30:00 updated Trail SL: 7069.0
+12:35:00 SL hit at 7069.0
+2025-03-26 Daily PL: 354.12
+
+2025-03-27 Daily PL: 0
+
+2025-03-28 Daily PL: 0
+
+2025-04-01 Short entry at 10:40:00 @7000.42, qty: 18, SL: 7007.30, TP: 6994.36
+10:40:00 updated Trail SL: 6905.75
+10:45:00 updated Trail SL: 6901.700000000001
+10:50:00 updated Trail SL: 6885.700000000001
+10:55:00 updated Trail SL: 6860.700000000001
+11:00:00 updated Trail SL: 6854.05
+11:05:00 SL hit at 6854.05
+2025-04-01 Daily PL: 2635.38
+
+2025-04-02 Long entry at 10:50:00 @6862.37, qty: 19, SL: 6857.73, TP: 6866.45
+10:50:00 updated Trail SL: 6905.349999999999
+10:55:00 SL hit at 6905.349999999999
+2025-04-02 Daily PL: 816.44
+
+2025-04-03 Short entry at 10:30:00 @6741.05, qty: 20, SL: 6751.13, TP: 6732.18
+10:30:00 updated Trail SL: 6674.3
+10:35:00 SL hit at 6674.3
+2025-04-03 Daily PL: 1334.28
+
+2025-04-04 Short entry at 11:25:00 @6560.58, qty: 20, SL: 6564.39, TP: 6557.22
+11:25:00 updated Trail SL: 6473.6
+11:30:00 updated Trail SL: 6463.150000000001
+11:35:00 SL hit at 6463.150000000001
+2025-04-04 Daily PL: 1948.22
+
+2025-04-07 Daily PL: 0
+
+2025-04-08 Short entry at 12:10:00 @6477.28, qty: 21, SL: 6480.25, TP: 6474.67
+12:10:00 updated Trail SL: 6367.55
+12:15:00 SL hit at 6367.55
+2025-04-08 Daily PL: 2303.51
+
+2025-04-09 Short entry at 10:10:00 @6388.20, qty: 22, SL: 6390.08, TP: 6386.54
+10:10:00 updated Trail SL: 6322.650000000001
+10:15:00 SL hit at 6322.650000000001
+2025-04-09 Daily PL: 1443.21
+
+2025-04-11 Daily PL: 0
+
+2025-04-15 Daily PL: 0
+
+2025-04-16 Short entry at 11:35:00 @6668.72, qty: 21, SL: 6671.05, TP: 6666.68
+11:35:00 updated Trail SL: 6607.1
+11:40:00 SL hit at 6607.1
+2025-04-16 Daily PL: 1293.74
+
+2025-04-17 Long entry at 12:10:00 @6699.09, qty: 21, SL: 6696.41, TP: 6701.45
+12:10:00 updated Trail SL: 6704.4
+12:15:00 updated Trail SL: 6726.9
+12:20:00 updated Trail SL: 6726.9
+12:25:00 updated Trail SL: 6754.9
+12:30:00 SL hit at 6754.9
+2025-04-17 Daily PL: 1172.0
+
+2025-04-21 Long entry at 09:30:00 @6925.81, qty: 20, SL: 6916.08, TP: 6934.38
+09:30:00 updated Trail SL: 6935.4
+09:35:00 updated Trail SL: 6983.9
+09:40:00 updated Trail SL: 7019.4
+09:45:00 updated Trail SL: 7031.4
+09:50:00 SL hit at 7031.4
+2025-04-21 Daily PL: 2111.29
+
+2025-04-22 Long entry at 11:05:00 @7000.38, qty: 20, SL: 6998.86, TP: 7001.71
+11:05:00 updated Trail SL: 7024.4
+11:10:00 updated Trail SL: 7026.4
+11:15:00 SL hit at 7026.4
+2025-04-22 Daily PL: 520.77
+
+2025-04-23 Long entry at 09:30:00 @7077.30, qty: 20, SL: 7065.60, TP: 7087.59
+09:30:00 updated Trail SL: 7092.9
+09:35:00 SL hit at 7092.9
+2025-04-23 Daily PL: 311.98
+
+NAUKRI Net PL: 47751.63 (47.75%), Days: 68, Total Trades: 48, Wins: 46 (95.83%)
+

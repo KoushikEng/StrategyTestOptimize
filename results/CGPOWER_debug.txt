@@ -1,0 +1,292 @@
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-01-13 Daily PL: 0
+
+2025-01-14 Daily PL: 0
+
+2025-01-15 Daily PL: 0
+
+2025-01-16 Long entry at 09:30:00 @625.98, qty: 159, SL: 624.77, TP: 627.05
+09:30:00 updated Trail SL: 628.4
+09:35:00 SL hit at 628.4
+2025-01-16 Daily PL: 387.77
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-01-17 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-01-20 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-01-21 Daily PL: 0
+
+2025-01-22 Short entry at 10:00:00 @651.64, qty: 154, SL: 652.53, TP: 650.85
+10:00:00 updated Trail SL: 633.25
+10:05:00 updated Trail SL: 632.0500000000001
+10:10:00 SL hit at 632.0500000000001
+2025-01-22 Daily PL: 3014.26
+
+2025-01-23 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-01-24 Daily PL: 0
+
+2025-01-27 Short entry at 09:30:00 @595.16, qty: 173, SL: 596.33, TP: 594.13
+09:30:00 updated Trail SL: 591.6
+09:35:00 SL hit at 591.6
+2025-01-27 Daily PL: 610.96
+
+2025-01-28 Short entry at 09:35:00 @579.69, qty: 179, SL: 581.75, TP: 577.89
+09:35:00 updated Trail SL: 572.4
+09:40:00 updated Trail SL: 558.95
+09:45:00 updated Trail SL: 555.7
+09:50:00 updated Trail SL: 543.1
+09:55:00 updated Trail SL: 541.3000000000001
+10:00:00 SL hit at 541.3000000000001
+2025-01-28 Daily PL: 6881.4
+
+2025-01-29 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-01-30 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-01-31 Long entry at 10:55:00 @630.01, qty: 176, SL: 628.65, TP: 631.21
+10:55:00 updated Trail SL: 635.4
+11:00:00 SL hit at 635.4
+2025-01-31 Daily PL: 946.01
+
+2025-02-01 Short entry at 11:50:00 @630.12, qty: 177, SL: 632.36, TP: 628.15
+11:50:00 updated Trail SL: 615.6
+11:55:00 SL hit at 615.6
+2025-02-01 Daily PL: 2563.59
+
+Rejecting trade due to small sl/tp
+2025-02-03 Daily PL: 0
+
+2025-02-04 Daily PL: 0
+
+2025-02-05 Long entry at 09:30:00 @614.02, qty: 186, SL: 613.20, TP: 614.74
+09:30:00 updated Trail SL: 615.75
+09:35:00 updated Trail SL: 617.15
+09:40:00 updated Trail SL: 618.4
+09:45:00 SL hit at 618.4
+2025-02-05 Daily PL: 814.09
+
+2025-02-06 Daily PL: 0
+
+2025-02-07 Long entry at 09:30:00 @618.66, qty: 186, SL: 617.65, TP: 619.56
+09:30:00 updated Trail SL: 619.25
+09:35:00 SL hit at 619.25
+2025-02-07 Daily PL: 104.57
+
+Rejecting trade due to small sl/tp
+2025-02-10 Short entry at 10:10:00 @602.19, qty: 191, SL: 602.89, TP: 601.57
+10:10:00 updated Trail SL: 597.6
+10:15:00 updated Trail SL: 597.1
+10:20:00 updated Trail SL: 596.6
+10:25:00 SL hit at 596.6
+2025-02-10 Daily PL: 1057.63
+
+2025-02-11 Daily PL: 0
+
+2025-02-12 Short entry at 10:00:00 @575.27, qty: 202, SL: 576.29, TP: 574.38
+10:00:00 updated Trail SL: 567.2
+10:05:00 updated Trail SL: 565.6
+10:10:00 updated Trail SL: 565.0
+10:15:00 updated Trail SL: 561.6
+10:20:00 SL hit at 561.6
+2025-02-12 Daily PL: 2759.58
+
+Rejecting trade due to small sl/tp
+2025-02-13 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-02-14 Short entry at 10:40:00 @568.24, qty: 209, SL: 569.02, TP: 567.56
+10:40:00 updated Trail SL: 566.7
+10:45:00 updated Trail SL: 564.25
+10:50:00 updated Trail SL: 562.5500000000001
+10:55:00 updated Trail SL: 561.1
+11:00:00 updated Trail SL: 560.25
+11:05:00 updated Trail SL: 559.5500000000001
+11:10:00 updated Trail SL: 559.1
+11:15:00 SL hit at 559.1
+2025-02-14 Daily PL: 1906.34
+
+2025-02-17 Daily PL: 0
+
+2025-02-18 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-02-19 Daily PL: 0
+
+2025-02-20 Daily PL: 0
+
+2025-02-21 Short entry at 10:10:00 @589.08, qty: 205, SL: 589.70, TP: 588.53
+10:10:00 updated Trail SL: 583.6
+10:15:00 updated Trail SL: 582.1
+10:20:00 SL hit at 582.1
+2025-02-21 Daily PL: 1426.38
+
+2025-02-24 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-02-25 Daily PL: 0
+
+2025-02-27 Short entry at 10:05:00 @586.42, qty: 208, SL: 587.04, TP: 585.88
+10:05:00 updated Trail SL: 580.9
+10:10:00 SL hit at 580.9
+2025-02-27 Daily PL: 1144.39
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-02-28 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-03-03 Daily PL: 0
+
+2025-03-04 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-03-05 Daily PL: 0
+
+2025-03-06 Long entry at 11:40:00 @626.37, qty: 197, SL: 625.80, TP: 626.87
+11:40:00 updated Trail SL: 627.3
+11:45:00 updated Trail SL: 627.35
+11:50:00 updated Trail SL: 627.9
+11:55:00 SL hit at 627.9
+2025-03-06 Daily PL: 299.08
+
+Rejecting trade due to small sl/tp
+2025-03-07 Daily PL: 0
+
+2025-03-10 Daily PL: 0
+
+2025-03-11 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-03-12 Daily PL: 0
+
+2025-03-13 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-03-17 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-03-18 Daily PL: 0
+
+2025-03-19 Long entry at 09:45:00 @644.34, qty: 192, SL: 643.72, TP: 644.88
+09:45:00 updated Trail SL: 647.1999999999999
+09:50:00 updated Trail SL: 647.3
+09:55:00 SL hit at 647.3
+2025-03-19 Daily PL: 564.57
+
+2025-03-20 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-03-21 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-03-24 Daily PL: 0
+
+2025-03-25 Daily PL: 0
+
+2025-03-26 Long entry at 10:30:00 @644.86, qty: 193, SL: 644.25, TP: 645.39
+10:30:00 updated Trail SL: 646.1
+10:35:00 updated Trail SL: 646.3
+10:40:00 updated Trail SL: 647.1
+10:45:00 updated Trail SL: 647.4
+10:50:00 SL hit at 647.4
+2025-03-26 Daily PL: 486.23
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-03-27 Long entry at 11:40:00 @639.68, qty: 195, SL: 638.97, TP: 640.30
+11:40:00 updated Trail SL: 640.05
+11:45:00 updated Trail SL: 640.05
+11:50:00 updated Trail SL: 640.9
+11:55:00 SL hit at 640.9
+2025-03-27 Daily PL: 241.84
+
+2025-03-28 Daily PL: 0
+
+2025-04-01 Short entry at 10:55:00 @629.67, qty: 198, SL: 630.48, TP: 628.96
+10:55:00 updated Trail SL: 619.2
+11:00:00 updated Trail SL: 616.65
+11:05:00 SL hit at 616.65
+2025-04-01 Daily PL: 2582.69
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-04-02 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-04-03 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-04-04 Short entry at 10:20:00 @599.27, qty: 213, SL: 599.91, TP: 598.71
+10:20:00 updated Trail SL: 590.75
+10:25:00 SL hit at 590.75
+2025-04-04 Daily PL: 1807.0
+
+2025-04-07 Daily PL: 0
+
+2025-04-08 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+Rejecting trade due to small sl/tp
+2025-04-09 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-04-11 Daily PL: 0
+
+2025-04-15 Daily PL: 0
+
+Rejecting trade due to small sl/tp
+2025-04-16 Long entry at 09:40:00 @595.29, qty: 217, SL: 594.18, TP: 596.27
+09:40:00 updated Trail SL: 598.25
+09:45:00 updated Trail SL: 599.1999999999999
+09:50:00 SL hit at 599.1999999999999
+2025-04-16 Daily PL: 844.15
+
+2025-04-17 Long entry at 09:50:00 @603.70, qty: 216, SL: 602.75, TP: 604.53
+09:50:00 updated Trail SL: 606.0
+09:55:00 SL hit at 606.0
+2025-04-17 Daily PL: 496.42
+
+Rejecting trade due to small sl/tp
+2025-04-21 Long entry at 09:55:00 @631.10, qty: 207, SL: 630.51, TP: 631.63
+09:55:00 updated Trail SL: 641.4
+10:00:00 updated Trail SL: 642.4
+10:05:00 SL hit at 642.4
+2025-04-21 Daily PL: 2331.63
+
+Rejecting trade due to small sl/tp
+2025-04-22 Daily PL: 0
+
+2025-04-23 Long entry at 09:45:00 @652.47, qty: 204, SL: 651.65, TP: 653.20
+09:45:00 updated Trail SL: 654.35
+09:50:00 SL hit at 654.35
+2025-04-23 Daily PL: 379.55
+
+CGPOWER Net PL: 33650.14 (33.65%), Days: 68, Total Trades: 23, Wins: 23 (100.0%)
+
