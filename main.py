@@ -1,9 +1,13 @@
-from First15minBreak import read_from_csv, run
+from First15minBreak import run
 from First15minBreakOpps import run as oppRun
-from Utilities import read_json, hist_download, read_column_from_csv
+from Utilities import read_json, hist_download, read_from_csv, read_column_from_csv
 from multiprocessing import Pool
+from multiprocessing.pool import ThreadPool
 from prettytable import PrettyTable
 import math
+import argparse
+from functools import partial
+from ConsoleAnimator import ConsoleAnimator
 
 
 
@@ -18,29 +22,71 @@ def convert_to_double_value_pair(data):
     return result
 
 if __name__ == '__main__':
-    # print(read_column_from_csv('nifty200list.csv', 'Symbol'))
-    # symbols = read_json('stocks_list.json')['nifty200']
+    anim = ConsoleAnimator()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('symbol', nargs='?', type=str)
+    parser.add_argument('--download', action='store_true')
+    parser.add_argument('kwargs', nargs=argparse.REMAINDER, help="Keyword arguments in the format key=value")
+    args = parser.parse_args()
+    
+    # print(read_column_from_csv('ind_nifty100list.csv', 'Symbol'))
+    # exit()
+    # symbols = read_json('stocks_list.json')['nifty100']
     symbols = ["HAL", "BDL", "NAUKRI", "JSWENERGY", "HUDCO", "CGPOWER", "BANKINDIA", "CONCOR", "CHOLAFIN", "TORNTPHARM"]
-    # hist_download(symbols)
+    
+    if args.symbol:
+        symbols = [args.symbol.upper()]
+    
+    if args.download:
+        anim.start("Downloading historical data...")
+        hist_download(symbols)
+        anim.done("Historical data downloaded")
+        
+    kwargs_dict = {}
+    for item in args.kwargs:
+        try:
+            key, value = item.split("=", 1)
+            if value == 'T' or value == 'F':
+                kwargs_dict[key] = True if value == 'T' else False
+                continue
+            
+            kwargs_dict[key] = value
+        except ValueError:
+            print(f"Invalid argument format: {item}. Please use key=value.")
+            exit()
+    
     # symbols.remove("YESBANK")
     # symbols.remove("IDEA")
-    print("Reading csvs")
-    with Pool() as pool:
+    
+    anim.start("Reading CSV files...")
+    with ThreadPool() as pool:
         argss = pool.map(read_from_csv, symbols)
-
-    print("testing")
-    # print(symbols, argss)
+    
+    anim.done("CSV files read")
+    
+    run_with_kwargs = partial(run, **kwargs_dict)
+    
+    anim.start("Running backtests...")
     with Pool() as pool:
-        results = pool.starmap(run, argss)
+        # Just pass args, since kwargs are already bound
+        results = pool.starmap(run_with_kwargs, argss)
+    anim.done("Backtesting complete")
 
-    # print(results)
+    len_results = len(results)
+    if len_results == 1:
+        print(f"{results[0][0]} Net P/L: {results[0][1]}, wins: {results[0][2]}")
+        exit()
 
-    table = PrettyTable(['Symbol', 'Net P/L', 'Win pct (%)', '|', 'Symbol (col2)', 'Net P/L (col2)', 'Win pct (%) (col2)'])
+    weights = [1, 400]
+    sorted_results = sorted(results, key=lambda x: weights[0] * -x[1] + weights[1] * -x[2])
+    
+    table_headers = ['Symbol', 'Net P/L', 'Win pct (%)']
 
-    weights = [1, 400]  # Weights for the 2nd and 3rd items in the child lists
-
-    # Sort based on the weighted sum of the 2nd and 3rd items
-    sorted_lists = sorted(results, key=lambda x: weights[0] * -x[1] + weights[1] * -x[2])
-    table.add_rows(convert_to_double_value_pair(sorted_lists))
+    if len_results <= 20:
+        table = PrettyTable(table_headers)
+        table.add_rows(sorted_results)
+    else:
+        table = PrettyTable(table_headers + ['|'] + [col + ' c2' for col in table_headers])
+        table.add_rows(convert_to_double_value_pair(sorted_results))
 
     print(table)

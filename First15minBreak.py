@@ -10,20 +10,10 @@ from vectorized_calculations import vectorized_atr
 mid_time = datetime.strptime("12:30", "%H:%M").time()
 end_time = datetime.strptime("15:10", "%H:%M").time()
 
-def read_from_csv(symbol: str, path='hist\\5min\\'):
-    # Read CSV into NumPy arrays
-    data = np.genfromtxt(f'{path+symbol}_5min.csv', delimiter=',', dtype=None, names=True, encoding='utf-8')
-    dates = np.array([datetime.strptime(d, '%Y-%m-%d').date() for d in data['date']])
-    times = np.array([datetime.strptime(t, '%H:%M:%S').time() for t in data['time']])
-    opens = data['Open']
-    highs = data['High']
-    lows = data['Low']
-    closes = data['Close']
-    volume = data['Volume']
-    return symbol, dates, times, opens, highs, lows, closes, volume
-
 @njit
 def calculate_qty(margin: float, sl: float, price: float, risk_amount : float=0.02) -> int:
+    if margin <= 0.0  or sl <= 0.0 or price <= 0.0:
+        return 0
     risk_per_trade = margin * risk_amount
     qty = min(risk_per_trade / sl, margin / price)
     return int(qty)
@@ -38,20 +28,20 @@ def run(*args, **kwargs):
     
     CONFIRM_EMA = True
     CONFIRM_EMA_SLOPE = True
-    ENABLED_TRAILING = True
+    ENABLED_TRAILING = kwargs.get('trail', False)
     CONFIRM_VOLUME = True
     CONFIRM_ATR = True
     
-    EMA_PERIOD = 20
-    EMA_SLOPE_PERIOD = 15
-    TRAIL_AMOUNT = 0.6
-    AVG_VOL_SPAN = 20
-    ATR_PERIOD = 14
+    ATR_TRAIL_MULTIPLIER = float(kwargs.get('trail_multi', 0.5))
+    EMA_PERIOD = int(kwargs.get('ema', 20))
+    EMA_SLOPE_PERIOD = int(kwargs.get('ema_slope', 15))
+    AVG_VOL_SPAN = int(kwargs.get('avg_vol', 20))
+    ATR_PERIOD = int(kwargs.get('atr', 14))
     
-    ATR_SL_MULTIPLIER = kwargs.get('ATR_SL_MULTIPLIER', 2.5)
-    ATR_TP_MULTIPLIER = kwargs.get('ATR_TP_MULTIPLIER', 2.2)
+    ATR_SL_MULTIPLIER = np.float64(kwargs.get('sl_multi', 2.5))
+    ATR_TP_MULTIPLIER = np.float64(kwargs.get('tp_multi', 3.0))
     
-    VOL_MULTIPLIER = 1.5
+    VOL_MULTIPLIER = float(kwargs.get('vol_multi', 1.5))
     
     def should_trade_based_on_ema(current_price :float, last_ema :float, last_ema_slope :float, side :str="long") -> bool:
         if not CONFIRM_EMA:
@@ -77,7 +67,7 @@ def run(*args, **kwargs):
     avg_vol = calculate_ema(volume, AVG_VOL_SPAN)
     ema = calculate_ema(closes, EMA_PERIOD) if CONFIRM_EMA else np.zeros_like(closes)
     ema_slope = calculate_ema_slope(ema, EMA_SLOPE_PERIOD, method='simple') if CONFIRM_EMA and CONFIRM_EMA_SLOPE else np.zeros_like(closes)
-    atr = vectorized_atr(highs, lows, closes, ATR_PERIOD) if CONFIRM_ATR else np.zeros_like(closes)
+    atr = calculate_atr(highs, lows, closes, ATR_PERIOD) if CONFIRM_ATR else np.zeros_like(closes)
     
     # Group data by date
     unique_dates = np.unique(dates)
@@ -108,8 +98,8 @@ def run(*args, **kwargs):
         init_15m_high_rounded = slippage(init_15m_high)
         init_15m_low_rounded = slippage(init_15m_low)
 
-        no_of_long_shares = math.floor(Margin / init_15m_high_rounded)
-        no_of_short_shares = math.floor(Margin / init_15m_low_rounded)
+        no_of_long_shares = 0
+        no_of_short_shares = 0
 
         daily_pl = 0
         positioned = False
@@ -154,11 +144,10 @@ def run(*args, **kwargs):
                 ABS_SL = ATR_SL_MULTIPLIER * current_atr
                 ABS_TP = ATR_TP_MULTIPLIER * current_atr
                 entry_price = random.uniform(init_15m_high, (init_15m_high + current_close)/2)
-                # no_of_long_shares = int(Margin/entry_price)
                 no_of_long_shares = calculate_qty(Margin, ABS_SL, entry_price)
                 SL = entry_price - ABS_SL
                 TP = entry_price + ABS_TP
-                if ABS_TP >= 0.5 and ABS_SL >= 0.5:
+                if ABS_TP >= 0.5 and ABS_SL >= 0.5 and no_of_long_shares > 0:
                     positioned = True
                     position = "Long"
                     rounded_TP = slippage(TP)
@@ -181,12 +170,11 @@ def run(*args, **kwargs):
                 ABS_SL = ATR_SL_MULTIPLIER * current_atr
                 ABS_TP = ATR_TP_MULTIPLIER * current_atr
                 entry_price = random.uniform((init_15m_low + current_close)/2, init_15m_low)
-                # no_of_short_shares = int(Margin/entry_price)
                 no_of_short_shares = calculate_qty(Margin, ABS_SL, entry_price)
                 SL = entry_price + ABS_SL
                 TP = entry_price - ABS_TP
                 # no_of_short_shares = calculate_qty(Margin, ABS_SL, RISK_AMOUNT)
-                if ABS_TP >= 0.5 and ABS_SL >= 0.5:
+                if ABS_TP >= 0.5 and ABS_SL >= 0.5 and no_of_short_shares > 0:
                     positioned = True
                     position = "Short"
                     rounded_TP = slippage(TP)
@@ -208,8 +196,8 @@ def run(*args, **kwargs):
                         print(f"{current_time} TP hit at {TP}", file=f)
                     break
 
-                if current_high >= TP and ENABLED_TRAILING and current_high - SL > TRAIL_AMOUNT:
-                    SL = current_high - TRAIL_AMOUNT
+                if current_high >= TP and ENABLED_TRAILING and current_high - SL > (trail_amount := ATR_TRAIL_MULTIPLIER * current_atr):
+                    SL = current_high - trail_amount
                     rounded_SL = slippage(SL)
                     if DEBUG:
                         print(f"{current_time} updated Trail SL: {SL}", file=f)
@@ -232,8 +220,8 @@ def run(*args, **kwargs):
                         print(f"{current_time} TP hit at {TP}", file=f)
                         break
 
-                elif current_low <= TP and ENABLED_TRAILING and SL - current_low > TRAIL_AMOUNT:
-                    SL = current_low + TRAIL_AMOUNT
+                elif current_low <= TP and ENABLED_TRAILING and SL - current_low > (trail_amount := ATR_TRAIL_MULTIPLIER * current_atr):
+                    SL = current_low + trail_amount
                     rounded_SL = slippage(SL)
                     if DEBUG:
                         print(f"{current_time} updated Trail SL: {SL}", file=f)
