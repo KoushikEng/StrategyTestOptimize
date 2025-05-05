@@ -43,6 +43,8 @@ def run(*args, **kwargs):
     
     VOL_MULTIPLIER = float(kwargs.get('vol_multi', 1.5))
     
+    returns = []
+    
     def should_trade_based_on_ema(current_price :float, last_ema :float, last_ema_slope :float, side :str="long") -> bool:
         if not CONFIRM_EMA:
             return True
@@ -94,9 +96,6 @@ def run(*args, **kwargs):
         # Compute initial 15m high and low
         init_15m_high = np.max(date_highs[:3])
         init_15m_low = np.min(date_lows[:3])
-
-        init_15m_high_rounded = slippage(init_15m_high)
-        init_15m_low_rounded = slippage(init_15m_low)
 
         no_of_long_shares = 0
         no_of_short_shares = 0
@@ -236,16 +235,18 @@ def run(*args, **kwargs):
 
         net_pl += daily_pl
         Margin += daily_pl
+        returns.append(daily_pl)
         if DEBUG:
             print(f"{current_date} Daily PL: {round(daily_pl, 2)}\n", file=f)
 
     rounded_net_pl = round(net_pl, 2)
     rounded_wins_pct = round(wins*100/no_of_trades, 2) if no_of_trades > 0 else 0.0
+    
     if DEBUG:
         print(f"{symbol} Net PL: {rounded_net_pl} ({net_pl/1000:.2f}%), Days: {days}, Total Trades: {no_of_trades}, Wins: {wins} ({rounded_wins_pct}%)\n", file=f)
 
     f.close()
     
-    return symbol, rounded_net_pl, rounded_wins_pct
+    return symbol, np.array(returns, dtype=np.float64), rounded_wins_pct
 
 

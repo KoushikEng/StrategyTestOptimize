@@ -8,6 +8,7 @@ import math
 import argparse
 from functools import partial
 from ConsoleAnimator import ConsoleAnimator
+import numpy as np
 
 
 
@@ -71,6 +72,8 @@ if __name__ == '__main__':
         # Just pass args, since kwargs are already bound
         results = pool.starmap(run_with_kwargs, argss)
     anim.done("Backtesting complete")
+    
+    results = [[r[0], np.sum(r[1]), r[2]] for r in results]
 
     len_results = len(results)
     if len_results == 1:
