@@ -9,6 +9,11 @@ from ConsoleAnimator import ConsoleAnimator
 from numba import njit
 from numpy.typing import NDArray
 
+parser = argparse.ArgumentParser()
+parser.add_argument('symbol', type=str)
+parser.add_argument('--trail', action='store_true')
+args = parser.parse_args()
+
 anim = ConsoleAnimator()
 
 RISK_FREE_RATE = 0.07
@@ -16,12 +21,14 @@ RISK_FREE_RATE = 0.07
 DataTuple: TypeAlias = Tuple[str, NDArray, NDArray, NDArray, NDArray, NDArray, NDArray, NDArray]
 
 # --- Risk Metrics Calculation ---
+@njit
 def calculate_sharpe(returns: NDArray, risk_free_rate: float = RISK_FREE_RATE) -> float:
     excess_returns = returns - risk_free_rate
-    if np.std(excess_returns) == 0:
+    if len(excess_returns) < 2 and np.std(excess_returns) == 0:
         return 0.0
     return np.mean(excess_returns) / np.std(excess_returns) * np.sqrt(252)
 
+@njit
 def calculate_sortino(returns: NDArray, risk_free_rate: float = RISK_FREE_RATE) -> float:
     excess_returns = returns - risk_free_rate
     downside_returns = excess_returns[excess_returns < 0]
@@ -44,6 +51,7 @@ def walk_forward_split(data: DataTuple, train_size=3375, test_size=375):
         test = [data[0], *[np.array(d[start+train_size:start+train_size+test_size]) for d in data[1:]]]
         yield train, test
 
+
 def nearest_multiple(n, multiple):
     return round(n/multiple) * multiple
 
@@ -52,8 +60,13 @@ def get_data_split(data: DataTuple, split=0.3):
     return [data[0], *[np.array(d[-start:]) for d in data[1:]]]
 
 def get_params_dict(params: List[float]):
-    ema, ema_slope, atr, avg_vol, trail_multi, vol_multi, sl_multi, tp_multi = params
-    return {"ema": ema, "ema_slope": ema_slope, "atr": atr, "avg_vol": avg_vol, "vol_multi": vol_multi, "sl_multi": sl_multi, "tp_multi": tp_multi, "trail_multi": trail_multi}
+    if args.trail:
+        sl_multi, tp_multi, ema, ema_slope, atr, avg_vol, vol_multi, trail_multi = params
+    else:
+        sl_multi, tp_multi, ema, ema_slope, atr, avg_vol, vol_multi = params
+    
+    params_dict = {"ema": ema, "ema_slope": ema_slope, "atr": atr, "avg_vol": avg_vol, "vol_multi": vol_multi, "sl_multi": sl_multi, "tp_multi": tp_multi}
+    return params_dict.update({"trail_multi": trail_multi, "trail": True}) if args.trail else params_dict 
 
 # --- Modified BreakoutProblem for NSGA-II ---
 class RobustBreakoutProblem:
@@ -61,23 +74,29 @@ class RobustBreakoutProblem:
         self.data = data
         
     def evaluate_single_run(self, params: List[float]):
-        return run(*self.data, **get_params_dict(params), trail=True)
+        return run(*self.data, **get_params_dict(params))
 
     def fitness(self, params: List[float]) -> List[float]:
         _, returns, win_pct = self.evaluate_single_run(params)
-        sl_multi = params[-2]
-        tp_multi = params[-1]
+        sl_multi = params[0]
+        tp_multi = params[1]
         
         # New objectives: Maximize Sharpe, Sortino, Win%, Minimize Drawdown
         sharpe = calculate_sharpe(returns)
         sortino = calculate_sortino(returns)
         drawdown = calculate_max_drawdown(returns)
+        sharpe = calculate_sharpe(returns)
+        if abs(sharpe) > 100:  # Impossible in reality
+            print("KILLER PARAMS:", params)
+            return [1e6, 1e6, 1e6, 1e6, 1e6, 1e6]  # Force NSGA-II to reject
         
         return [-sharpe, -sortino, -win_pct, drawdown, sl_multi, -tp_multi]  # Pygmo minimizes
 
     def get_bounds(self) -> Tuple[List[float], List[float]]:
-        return ([9, 9, 9, 9, 0.4, 1.3, 0.7, 1.3], 
-                [35, 35, 35, 35, 2.0, 2.5, 3.0, 3.5])
+        # sl_multi, tp_multi, ema, ema_slope, atr, avg_vol, vol_multi, trail_multi
+        
+        return ([0.7, 1.3, 9, 9, 9, 9, 1.3] + ([0.4] if args.trail else []), 
+                [3.0, 3.5, 35, 35, 35, 35, 2.5] + ([2.0] if args.trail else []))
 
     def get_nobj(self) -> int:
         return 6  # Sharpe, Sortino, Win%, Drawdown, sl_multi, tp_multi
@@ -86,7 +105,7 @@ class RobustBreakoutProblem:
 def optimize_single_period(data: DataTuple) -> List:
     prob = pg.problem(RobustBreakoutProblem(data))
     algo = pg.algorithm(pg.nsga2(gen=300))
-    algo.set_verbosity(1)
+    # algo.set_verbosity(1)
     pop = pg.population(prob, size=120)
     pop = algo.evolve(pop)
     
@@ -177,11 +196,6 @@ def select_robust_params(wfa_results: List[Dict],
     return best_param, best_sharpe_results
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument('symbol', type=str)
-    parser.add_argument('--trail', action='store_true')
-    args = parser.parse_args()
-
     SYMBOL = args.symbol.upper()
     data = read_from_csv(SYMBOL)
     
@@ -208,6 +222,7 @@ if __name__ == "__main__":
     sharpe_drops = robust_sharpe_results["sharpe_drops"]
     mean_sharpe_drops = np.mean(sharpe_drops)
     std_sharpe_drops = np.std(sharpe_drops)
+    print(f"Robust Sharpe: {robust_sharpe_results['mean_sharpe']} ±{robust_sharpe_results['std_sharpe']}, Best: {robust_sharpe_results['best_sharpe']}, Worst: {robust_sharpe_results['worst_sharpe']}")
     
     # Viability Check 2: Parametric Fragility
     if mean_sharpe_drops > 0.3:
@@ -234,9 +249,9 @@ if __name__ == "__main__":
     # else:
     #     print("\n✅ Strategy passes basic robustness tests.")
     
-    round_params = lambda params: {item: round(params[item], 1) if item.endswith("_multi") else round(params[item]) for item in params}
+    round_params_string = lambda params: [f"{k}={np.round(v, 1) if k.endswith('_multi') else int(np.round(v))}" for k, v in params.items()]
     
-    print("Test run: python main.py ", SYMBOL, **round_params(robust_params))
+    print("Test run: python main.py", SYMBOL, *round_params_string(get_params_dict(robust_params)))
     
     t2 = time.time()
     

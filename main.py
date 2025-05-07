@@ -33,7 +33,7 @@ if __name__ == '__main__':
     # print(read_column_from_csv('ind_nifty100list.csv', 'Symbol'))
     # exit()
     # symbols = read_json('stocks_list.json')['nifty100']
-    symbols = ["HAL", "BDL", "NAUKRI", "JSWENERGY", "HUDCO", "CGPOWER", "BANKINDIA", "CONCOR", "CHOLAFIN", "TORNTPHARM"]
+    symbols = ["HAL", "BDL", "NAUKRI", "JSWENERGY", "HUDCO", "CGPOWER", "BANKINDIA", "CONCOR", "CHOLAFIN", "TORNTPHARM", "PFC"]
     
     if args.symbol:
         symbols = [args.symbol.upper()]
@@ -73,7 +73,7 @@ if __name__ == '__main__':
         results = pool.starmap(run_with_kwargs, argss)
     anim.done("Backtesting complete")
     
-    results = [[r[0], np.sum(r[1]), r[2]] for r in results]
+    results = [[r[0], np.round(np.sum(r[1]), 2), r[2]] for r in results]
 
     len_results = len(results)
     if len_results == 1:
