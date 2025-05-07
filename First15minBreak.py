@@ -18,6 +18,108 @@ def calculate_qty(margin: float, sl: float, price: float, risk_amount : float=0.
     qty = min(risk_per_trade / sl, margin / price)
     return int(qty)
 
+def get_fill_price(breakout_level: float, 
+                  current_low: float, 
+                  current_high: float, 
+                  current_open: float,
+                  atr_value: float, 
+                  spread: float = 0.0002,
+                  is_long: bool = True) -> float:
+    """
+    Calculates realistic fill price for 5m breakout strategies.
+    
+    Args:
+        breakout_level: Price level to trigger entry (e.g. 15min high)
+        current_low/current_high: Candle's price range
+        current_open: Candle's open price
+        atr_value: Current ATR (14-period recommended)
+        spread: Broker spread (0.02% for FX, 0.1% for crypto)
+        is_long: True for long entries, False for shorts
+        
+    Returns:
+        Realistic fill price with volatility-adjusted slippage
+    """
+    # --- Hard Limits for 5m Trading ---
+    MIN_SLIPPAGE = 0.0005  # Minimum 0.05% slippage (even in calm markets)
+    MAX_SLIPPAGE_PCT = 0.75  # Never pay more than 75% of ATR in slippage
+    
+    if is_long:
+        # Long entry logic
+        effective_breakout = max(breakout_level, current_open)
+        
+        # Case 1: Got filled at breakout (ideal scenario)
+        if current_low <= effective_breakout <= current_high:
+            return effective_breakout * (1 + spread)
+        
+        # Case 2: Slipped entry (price blasted through)
+        else:
+            # Calculate overshoot ratio (how violently price moved)
+            overshoot_ratio = (current_high - effective_breakout) / atr_value
+            
+            # Base slippage + volatility penalty (capped at MAX_SLIPPAGE_PCT)
+            slippage_pct = min(0.25 + 0.3 * overshoot_ratio, MAX_SLIPPAGE_PCT)
+            
+            # Apply minimum slippage guarantee
+            slippage = max(atr_value * slippage_pct, effective_breakout * MIN_SLIPPAGE)
+            
+            # Don't exceed candle's high
+            fill_price = effective_breakout * (1 + spread) + min(slippage, current_high - effective_breakout)
+            return round(fill_price, 6)  # Avoid floating point precision issues
+            
+    else:
+        # Short entry logic (mirror image)
+        effective_breakout = min(breakout_level, current_open)
+        
+        if current_low <= effective_breakout <= current_high:
+            return effective_breakout * (1 - spread)
+        else:
+            overshoot_ratio = (effective_breakout - current_low) / atr_value
+            slippage_pct = min(0.25 + 0.3 * overshoot_ratio, MAX_SLIPPAGE_PCT)
+            slippage = max(atr_value * slippage_pct, effective_breakout * MIN_SLIPPAGE)
+            fill_price = effective_breakout * (1 - spread) - min(slippage, effective_breakout - current_low)
+            return round(fill_price, 6)
+
+def exit_at_market_close(position_type: str, 
+                        entry_price: float,
+                        current_low: float,
+                        current_high: float,
+                        current_close: float,
+                        current_volume: float,
+                        avg_volume: float,
+                        atr_value: float,
+                        SL: float,
+                        position_size: float) -> float:
+    """
+    Realistic market-close exit for intraday 5m strategies.
+    
+    Returns:
+        Tuple: (exit_price, pnl)
+    """
+    # Calculate volume ratio (0.5-1.5 range)
+    vol_ratio = min(max(current_volume / avg_volume, 0.5), 1.5)
+    
+    if position_type == "Long":
+        # Volume-weighted exit price (70% close, 30% low, adjusted by volume)
+        exit_price = (current_close*0.7 + current_low*0.3) * (1 - 0.1*(1 - vol_ratio))
+        
+        # ATR-based protection (minimum fill improvement)
+        min_fill = current_close - 0.3 * atr_value
+        exit_price = max(exit_price, min_fill, SL)
+        
+        pnl = (exit_price - entry_price) * position_size
+    
+    elif position_type == "Short":
+        # Volume-weighted exit price (70% close, 30% high)
+        exit_price = (current_close*0.7 + current_high*0.3) * (1 + 0.1*(1 - vol_ratio))
+        
+        # ATR-based protection
+        max_fill = current_close + 0.3 * atr_value
+        exit_price = min(exit_price, max_fill, SL)
+        
+        pnl = (entry_price - exit_price) * position_size
+    
+    return exit_price, pnl
+
 def run(*args, **kwargs):
     symbol, dates, times, opens, highs, lows, closes, volume = args
     
@@ -84,6 +186,7 @@ def run(*args, **kwargs):
         # Get data for the current date
         date_mask = dates == current_date
         date_indices = np.where(date_mask)[0]
+        date_opens = opens[date_mask]
         date_highs = highs[date_mask]
         date_lows = lows[date_mask]
         date_closes = closes[date_mask]
@@ -94,8 +197,8 @@ def run(*args, **kwargs):
         date_atr = atr[date_mask]
 
         # Compute initial 15m high and low
-        init_15m_high = np.max(date_highs[:3])
-        init_15m_low = np.min(date_lows[:3])
+        first_15m_high = np.max(date_highs[:3])
+        first_15m_low = np.min(date_lows[:3])
 
         no_of_long_shares = 0
         no_of_short_shares = 0
@@ -107,6 +210,7 @@ def run(*args, **kwargs):
         entry_price = None
 
         for idx in range(3, len(date_indices)):
+            current_open = date_opens[idx]
             current_high = date_highs[idx]
             current_low = date_lows[idx]
             current_close = date_closes[idx]
@@ -124,113 +228,124 @@ def run(*args, **kwargs):
                 break
 
             if current_time >= end_time and positioned:
-                # cancel position
+                exit_price, pnl = exit_at_market_close(
+                    position_type=position,
+                    entry_price=entry_price,
+                    current_low=current_low,
+                    current_high=current_high,
+                    current_close=current_close,
+                    current_volume=current_volume,
+                    avg_volume=current_avg_vol,
+                    atr_value=current_atr,
+                    SL=SL,
+                    position_size=no_of_long_shares if position == "Long" else no_of_short_shares
+                )
+                
+                daily_pl += pnl
                 positioned = False
-                if position == "Long":
-                    u = random.uniform(max(current_low, (entry_price + SL)/2), min(current_high, (TP + entry_price)/2))
-                    daily_pl -= (entry_price - u) * no_of_long_shares
-                elif position == "Short":
-                    u = random.uniform(max(current_low, (entry_price + TP)/2), min(current_high, (entry_price + SL)/2))
-                    daily_pl += (entry_price - u) * no_of_short_shares
-                print(f"15:20 Cancel", file=f) if DEBUG else None
+                
+                if DEBUG:
+                    print(f"{current_time} - Market Close Exit | "
+                        f"Position: {position} | "
+                        f"Exit: {exit_price:.5f} | "
+                        f"Vol Ratio: {current_volume/current_avg_vol:.2f}x | "
+                        f"PnL: {pnl:.2f}", 
+                        file=f)
                 break
 
             # Long entry conditions
-            if ((current_high > init_15m_high and not positioned) # original condition
+            if ((current_close > first_15m_high and not positioned) # original condition
                 and should_trade_based_on_ema(prev_close, last_ema, last_ema_slope) # ema condition
                 and should_trade_based_on_vol(current_volume, current_avg_vol) # volume condition
                 ):
                 ABS_SL = ATR_SL_MULTIPLIER * current_atr
                 ABS_TP = ATR_TP_MULTIPLIER * current_atr
-                entry_price = random.uniform(init_15m_high, (init_15m_high + current_close)/2)
+                entry_price = get_fill_price(first_15m_high, current_low, current_high, current_open, current_atr)
                 no_of_long_shares = calculate_qty(Margin, ABS_SL, entry_price)
                 SL = entry_price - ABS_SL
                 TP = entry_price + ABS_TP
                 if ABS_TP >= 0.5 and ABS_SL >= 0.5 and no_of_long_shares > 0:
                     positioned = True
                     position = "Long"
-                    rounded_TP = slippage(TP)
-                    rounded_SL = slippage(SL)
                     no_of_trades += 1
                     if DEBUG:
                         print(f"{current_date} Long entry at {current_time} @{entry_price:.2f}, qty: {no_of_long_shares}, SL: {SL:.2f}, TP: {TP:.2f}", file=f)
                 else:
                     print("Rejecting trade due to small sl/tp", file=f) if DEBUG else None
-                    continue
+                
+                continue
 
             # Short entry conditions
-            elif ((current_low < init_15m_low and not positioned) # original condition
+            elif ((current_close < first_15m_low and not positioned) # original condition
                 and should_trade_based_on_ema(prev_close, last_ema, last_ema_slope, "short") # ema condition
                 and should_trade_based_on_vol(current_volume, current_avg_vol) # volume condition
                 ):
-                # SL = prev_high if consider_SL == "Previous" else current_high
-                # TP = init_15m_low_rounded - RR * (SL - init_15m_low) + current_open * tp_adjustment
-                # SL += current_open * sl_adjustment
                 ABS_SL = ATR_SL_MULTIPLIER * current_atr
                 ABS_TP = ATR_TP_MULTIPLIER * current_atr
-                entry_price = random.uniform((init_15m_low + current_close)/2, init_15m_low)
+                entry_price = get_fill_price(first_15m_low, current_low, current_high, current_open, current_atr, is_long=False)
                 no_of_short_shares = calculate_qty(Margin, ABS_SL, entry_price)
                 SL = entry_price + ABS_SL
                 TP = entry_price - ABS_TP
-                # no_of_short_shares = calculate_qty(Margin, ABS_SL, RISK_AMOUNT)
                 if ABS_TP >= 0.5 and ABS_SL >= 0.5 and no_of_short_shares > 0:
                     positioned = True
                     position = "Short"
-                    rounded_TP = slippage(TP)
-                    rounded_SL = slippage(SL)
                     no_of_trades += 1
                     if DEBUG:
                         print(f"{current_date} Short entry at {current_time} @{entry_price:.2f}, qty: {no_of_short_shares}, SL: {SL:.2f}, TP: {TP:.2f}", file=f)
                 else:
                     print("Rejecting trade due to small sl/tp", file=f) if DEBUG else None
-                    continue
+                
+                continue
 
             # Exit conditions for Long
             if positioned and position == "Long":
-                if current_high >= TP and not ENABLED_TRAILING:
-                    daily_pl += (rounded_TP - entry_price) * no_of_long_shares
-                    wins += 1
-                    positioned = False
-                    if DEBUG:
-                        print(f"{current_time} TP hit at {TP}", file=f)
-                    break
-
-                if current_high >= TP and ENABLED_TRAILING and current_high - SL > (trail_amount := ATR_TRAIL_MULTIPLIER * current_atr):
-                    SL = current_high - trail_amount
-                    rounded_SL = slippage(SL)
-                    if DEBUG:
-                        print(f"{current_time} updated Trail SL: {SL}", file=f)
-                elif current_low <= SL:
-                    daily_pl += (rounded_SL - entry_price) * no_of_long_shares
-                    if ENABLED_TRAILING and daily_pl > 0:
+                # Take Profit Logic
+                if current_high >= TP:
+                    if not ENABLED_TRAILING:
+                        daily_pl += (TP - entry_price) * no_of_long_shares  # TP is <= current_high by definition
                         wins += 1
-                    positioned = False
-                    if DEBUG:
-                        print(f"{current_time} SL hit at {SL}", file=f)
-                    break
-
-            # Exit conditions for Short
-            elif positioned and position == "Short":
-                if current_low <= TP  and not ENABLED_TRAILING:
-                    daily_pl += (entry_price - rounded_TP) * no_of_short_shares
-                    wins += 1
-                    positioned = False
-                    if DEBUG:
-                        print(f"{current_time} TP hit at {TP}", file=f)
+                        positioned = False
+                        if DEBUG: print(f"{current_time} TP hit at {TP:.4f}")
                         break
+                    
+                    # Trailing Stop Logic
+                    elif ENABLED_TRAILING:
+                        new_sl = current_high - (ATR_TRAIL_MULTIPLIER * current_atr)
+                        if new_sl > SL:  # Only tighten the SL
+                            SL = new_sl
+                            if DEBUG: print(f"{current_time} Trail SL updated to {SL:.4f}")
+                
+                # Stop Loss Logic
+                if current_low <= SL:
+                    daily_pl += (SL - entry_price) * no_of_long_shares  # SL is >= current_low when condition triggers
+                    if ENABLED_TRAILING and (SL - entry_price) > 0:
+                        wins += 1  # Only count as win if profitable
+                    positioned = False
+                    if DEBUG: print(f"{current_time} SL hit at {SL:.4f}")
+                    break
 
-                elif current_low <= TP and ENABLED_TRAILING and SL - current_low > (trail_amount := ATR_TRAIL_MULTIPLIER * current_atr):
-                    SL = current_low + trail_amount
-                    rounded_SL = slippage(SL)
-                    if DEBUG:
-                        print(f"{current_time} updated Trail SL: {SL}", file=f)
-                elif current_high >= SL:
-                    daily_pl += (entry_price - rounded_SL) * no_of_short_shares
-                    if ENABLED_TRAILING and daily_pl > 0:
+            # Exit conditions for Short (identical cleanup)
+            elif positioned and position == "Short":
+                if current_low <= TP:
+                    if not ENABLED_TRAILING:
+                        daily_pl += (entry_price - TP) * no_of_short_shares
+                        wins += 1
+                        positioned = False
+                        if DEBUG: print(f"{current_time} TP hit at {TP:.4f}")
+                        break
+                    
+                    elif ENABLED_TRAILING:
+                        new_sl = current_low + (ATR_TRAIL_MULTIPLIER * current_atr)
+                        if new_sl < SL:  # Only tighten the SL
+                            SL = new_sl
+                            if DEBUG: print(f"{current_time} Trail SL updated to {SL:.4f}")
+                
+                if current_high >= SL:
+                    daily_pl += (entry_price - SL) * no_of_short_shares
+                    if ENABLED_TRAILING and (entry_price - SL) > 0:
                         wins += 1
                     positioned = False
-                    if DEBUG:
-                        print(f"{current_time} SL hit at {SL}", file=f)
+                    if DEBUG: print(f"{current_time} SL hit at {SL:.4f}")
                     break
 
         net_pl += daily_pl
