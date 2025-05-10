@@ -1,6 +1,4 @@
 import numpy as np
-import math
-import random
 from datetime import datetime
 from Utilities import slippage
 from numba_calculations import calculate_ema, calculate_sma, calculate_ema_slope, calculate_atr
@@ -23,66 +21,32 @@ def calculate_qty(margin: float, sl: float, price: float, risk_amount : float=0.
     qty = min(risk_per_trade / sl, margin / price)
     return int(qty)
 
-def get_fill_price(breakout_level: float, 
-                  current_low: float, 
-                  current_high: float, 
-                  current_open: float,
-                  atr_value: float, 
-                  spread: float = 0.0002,
-                  is_long: bool = True) -> float:
+def get_fill_price(breakout_level, current_low, current_high, current_open, atr_value, spread=0.0002, is_long=True):
     """
-    Calculates realistic fill price for 5m breakout strategies.
-    
-    Args:
-        breakout_level: Price level to trigger entry (e.g. 15min high)
-        current_low/current_high: Candle's price range
-        current_open: Candle's open price
-        atr_value: Current ATR (14-period recommended)
-        spread: Broker spread (0.02% for FX, 0.1% for crypto)
-        is_long: True for long entries, False for shorts
-        
-    Returns:
-        Realistic fill price with volatility-adjusted slippage
+    Brutally realistic backtest fills. Assumes:
+    - If breakout level is within candle range -> filled at worst possible price
+    - Otherwise -> aggressive slippage
     """
-    # --- Hard Limits for 5m Trading ---
-    MIN_SLIPPAGE = 0.0005  # Minimum 0.05% slippage (even in calm markets)
-    MAX_SLIPPAGE_PCT = 0.75  # Never pay more than 75% of ATR in slippage
+    spread = breakout_level * spread
     
     if is_long:
-        # Long entry logic
-        effective_breakout = max(breakout_level, current_open)
+        # Case 1: Breakout level was touched this candle
+        if current_low <= breakout_level <= current_high:
+            # You get filled at breakout_level + 0.3*ATR (worst-case within candle)
+            return breakout_level + max(0.25 * atr_value, spread)
         
-        # Case 1: Got filled at breakout (ideal scenario)
-        if current_low <= effective_breakout <= current_high:
-            return effective_breakout * (1 + spread)
-        
-        # Case 2: Slipped entry (price blasted through)
+        # Case 2: Price never touched breakout (slipped away)
         else:
-            # Calculate overshoot ratio (how violently price moved)
-            overshoot_ratio = (current_high - effective_breakout) / atr_value
-            
-            # Base slippage + volatility penalty (capped at MAX_SLIPPAGE_PCT)
-            slippage_pct = min(0.25 + 0.3 * overshoot_ratio, MAX_SLIPPAGE_PCT)
-            
-            # Apply minimum slippage guarantee
-            slippage = max(atr_value * slippage_pct, effective_breakout * MIN_SLIPPAGE)
-            
-            # Don't exceed candle's high
-            fill_price = effective_breakout * (1 + spread) + min(slippage, current_high - effective_breakout)
-            return round(fill_price, 6)  # Avoid floating point precision issues
-            
+            # Penalty = distance from breakout to open + 0.5*ATR
+            slippage = max(current_open - breakout_level, 0) + 0.25 * atr_value
+            return breakout_level + slippage + spread
     else:
-        # Short entry logic (mirror image)
-        effective_breakout = min(breakout_level, current_open)
-        
-        if current_low <= effective_breakout <= current_high:
-            return effective_breakout * (1 - spread)
+        # Short logic (mirror image)
+        if current_low <= breakout_level <= current_high:
+            return breakout_level - max(0.25 * atr_value, spread)
         else:
-            overshoot_ratio = (effective_breakout - current_low) / atr_value
-            slippage_pct = min(0.25 + 0.3 * overshoot_ratio, MAX_SLIPPAGE_PCT)
-            slippage = max(atr_value * slippage_pct, effective_breakout * MIN_SLIPPAGE)
-            fill_price = effective_breakout * (1 - spread) - min(slippage, effective_breakout - current_low)
-            return round(fill_price, 6)
+            slippage = max(breakout_level - current_open, 0) + 0.25 * atr_value
+            return breakout_level - slippage - spread
 
 def exit_at_market_close(position_type: POSITION_TYPE, 
                         entry_price: float,
@@ -232,8 +196,11 @@ def run(*args, **kwargs):
         daily_pl = 0
         in_position = False
         position_type = None
-        SL = TP = rounded_TP = rounded_SL = None
+        SL = TP = None
         entry_price = None
+        
+        is_brokeout = False
+        is_confirmed_vol = False
 
         for idx in range(3, len(date_indices)):
             current_open = date_opens[idx]
@@ -280,8 +247,8 @@ def run(*args, **kwargs):
                 break
 
             # Long entry conditions
-            if ((current_close > first_15m_high and current_close > prev_close and not in_position) # original condition
-                and should_trade_based_on_ema(prev_close, last_ema, last_ema_slope, current_atr) # ema condition
+            if ((current_high > first_15m_high and current_close > prev_close and not in_position) # original condition
+                and should_trade_based_on_ema(current_close, last_ema, last_ema_slope, current_atr) # ema condition
                 and should_trade_based_on_vol(current_volume, current_avg_vol, VOL_MULTIPLIER) # volume condition
                 ):
                 ABS_SL = ATR_SL_MULTIPLIER * current_atr
@@ -302,8 +269,8 @@ def run(*args, **kwargs):
                 continue
 
             # Short entry conditions
-            elif ((current_close < first_15m_low and current_close < prev_close and not in_position) # original condition
-                and should_trade_based_on_ema(prev_close, last_ema, last_ema_slope, current_atr, POSITION_TYPE.SHORT) # ema condition
+            elif ((current_low < first_15m_low and current_close < prev_close and not in_position) # original condition
+                and should_trade_based_on_ema(current_close, last_ema, last_ema_slope, current_atr, POSITION_TYPE.SHORT) # ema condition
                 and should_trade_based_on_vol(current_volume, current_avg_vol, VOL_MULTIPLIER) # volume condition
                 ):
                 ABS_SL = ATR_SL_MULTIPLIER * current_atr
