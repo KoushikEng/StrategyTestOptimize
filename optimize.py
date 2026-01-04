@@ -1,17 +1,18 @@
-
 from typing import Dict, List, Tuple, Any
 import pygmo as pg
 import numpy as np
 import argparse
 import time
-from Utilities import read_from_csv, DataTuple, get_strategy
+from multiprocessing import cpu_count
+from Utilities import read_from_csv, DataTuple, get_strategy, get_interval
 from indicators.risk_metrics import calculate_sharpe, calculate_sortino, calculate_max_drawdown
 
 parser = argparse.ArgumentParser(description="Optimize the strategy")
 parser.add_argument('symbol', type=str, help="Symbol to optimize")
 parser.add_argument('--strategy', '-S', type=str, required=True, help="Strategy to optimize")
-parser.add_argument('--pop', type=int, default=40, help="Population size")
+parser.add_argument('--pop', type=int, default=40, help="Population size per island")
 parser.add_argument('--gen', type=int, default=50, help="Generations")
+parser.add_argument('--interval', '-I', type=str, default='5', help='Interval (1, 5, 15, 1H, 1D, etc.)')
 args = parser.parse_args()
 
 def walk_forward_split(data: DataTuple, train_size=3375, test_size=375):
@@ -32,75 +33,95 @@ class StrategyOptimizationProblem:
         self.strategy = strategy_class()
         self.bounds = bounds
         self.param_names = param_names
+        self.n_obj = 1 # Single objective
         
     def get_params_kwargs(self, params: List[float]) -> Dict[str, Any]:
         return dict(zip(self.param_names, params))
 
-    def fitness(self, params: List[float]) -> List[float]:
+    def evaluate(self, params: List[float]):
         kwargs = self.get_params_kwargs(params)
         try:
-            _, returns, win_pct = self.strategy.run(self.data, **kwargs)
+            return self.strategy.run(self.data, **kwargs)
         except Exception:
-            return [1e6, 1e6, 1e6] # Punishment
+            return (np.array([1.0]), np.array([0.0]), 0.0)
 
-        sharpe = calculate_sharpe(returns)
-        drawdown = calculate_max_drawdown(returns)
+    def fitness(self, params: List[float]) -> List[float]:
+        # returns, equity, win_rate
+        _, returns, win_pct = self.evaluate(params)
         
-        # Objective: Maximize Sharpe, Maximize Win Rate, Minimize Drawdown
-        # Pygmo minimizes, so we negate Sharpe and Win Rate
+        # Use Trade-based metrics for optimization stability
+        trades = returns[returns != 0]
         
         # Penalties
-        if len(returns) < 10: # Too few trades
-            return [1e6, 1e6, 1e6]
+        if len(trades) < 2: # Too few trades
+            return [1e6]
             
-        return [-sharpe, -win_pct, drawdown]
+        sharpe = calculate_sharpe(trades, risk_free_rate=0.0, scaling_factor=1.0) # Trade Sharpe
+        # Drawdown can be incorporated as penalty or constraint if needed, but for now just Sharpe
+        
+        return [-sharpe]
 
     def get_bounds(self) -> Tuple[List[float], List[float]]:
         return self.bounds
 
     def get_nobj(self) -> int:
-        return 3
+        return self.n_obj
 
 def optimize_single_period(problem) -> Tuple[List[float], List[float]]:
+    # DE1220 Algorithm
+    algo = pg.algorithm(pg.de1220(gen=args.gen))
+    
+    # Island Model (Parallelism)
+    island_count = cpu_count()
     prob = pg.problem(problem)
-    algo = pg.algorithm(pg.nsga2(gen=args.gen))
-    pop = pg.population(prob, size=args.pop)
-    pop = algo.evolve(pop)
-    return pop.get_x(), pop.get_f()
+    
+    # Create Archipelago
+    archi = pg.archipelago(n=island_count, algo=algo, prob=prob, pop_size=args.pop)
+    archi.evolve()
+    archi.wait_check()
+    
+    # Single objective: Champions are the best found from each island
+    return archi.get_champions_x(), archi.get_champions_f()
 
 def walk_forward_optimize(data: DataTuple, strategy_class, bounds, param_names) -> List[Dict]:
     results = []
-    # Adjust train/test size based on data length if needed
     total_len = len(data[1])
     train_size = int(total_len * 0.6)
     test_size = int(total_len * 0.15)
     
     if train_size < 100 or test_size < 20:
-        # Fallback for small data
         train_size = int(total_len * 0.7)
         test_size = int(total_len * 0.2)
         
-    
-    print(f"WFA: Train={train_size}, Test={test_size}")
+    print(f"WFA: Train={train_size}, Test={test_size}, Algo=de1220")
 
     for train_data, test_data in walk_forward_split(data, train_size, test_size):
         problem = StrategyOptimizationProblem(train_data, strategy_class, bounds, param_names)
-        pareto_x, pareto_f = optimize_single_period(problem)
+        pareto_x, _ = optimize_single_period(problem)
         
         # Validate on Test
         test_problem = StrategyOptimizationProblem(test_data, strategy_class, bounds, param_names)
         
         for params in pareto_x:
-            # We just want metrics here
-            fit = test_problem.fitness(params)
-            # fit is [-sharpe, -win_pct, drawdown]
+            # Re-run to get full metrics
+            _, returns, win_pct = test_problem.evaluate(params)
+            trades = returns[returns != 0]
             
-            results.append({
+            if len(trades) < 2:
+                # print(f"Skipping result: Too few trades ({len(trades)})")
+                # print(f"Skipping result: Too few trades ({len(trades)}). Params: {params}")
+                continue
+                
+            sharpe = calculate_sharpe(trades, risk_free_rate=0.0, scaling_factor=1.0)
+            drawdown = calculate_max_drawdown(returns)
+            
+            res = {
                 "params": params,
-                "oos_sharpe": -fit[0],
-                "win_pct": -fit[1],
-                "drawdown": fit[2]
-            })
+                "oos_sharpe": sharpe,
+                "win_pct": win_pct,
+                "drawdown": drawdown
+            }
+            results.append(res)
             
     return results
 
@@ -110,10 +131,13 @@ if __name__ == "__main__":
         exit()
         
     SYMBOL = args.symbol.upper()
+    interval_enum = get_interval(args.interval)
+    data_path = f"./data/{interval_enum.value}/"
+    
     try:
-        data = read_from_csv(SYMBOL, "./data/5/")
+        data = read_from_csv(SYMBOL, data_path)
     except Exception as e:
-        print(f"Error reading data for {SYMBOL}: {e}")
+        print(f"Error reading data for {SYMBOL} from {data_path}: {e}")
         # Try default path assumption from previous code if needed or just fail
         exit()
 
@@ -151,8 +175,8 @@ if __name__ == "__main__":
     print(f"Win Rate: {best_result['win_pct']*100:.2f}%")
     print(f"Max DD: {best_result['drawdown']*100:.2f}%")
     
-    print("\nCmd to run:")
-    param_str = " ".join([f"--{k} {v}" for k,v in best_params_dict.items()]) # This assumes main.py takes args exactly like this, which currently it doesn't support generic args well
+    # print("\nCmd to run:")
+    # param_str = " ".join([f"--{k} {v}" for k,v in best_params_dict.items()]) # This assumes main.py takes args exactly like this, which currently it doesn't support generic args well
     # Current main.py doesn't accept dynamic args easily via CLI yet without work. 
     # But we print the dict for user to use.
 

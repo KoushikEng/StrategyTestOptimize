@@ -21,6 +21,25 @@ from numpy.typing import NDArray
 
 DataTuple: TypeAlias = Tuple[str, NDArray, NDArray, NDArray, NDArray, NDArray, NDArray, NDArray]
 
+INTERVAL_MAP = {
+    "1": Interval.in_1_minute,
+    "3": Interval.in_3_minute,
+    "5": Interval.in_5_minute,
+    "15": Interval.in_15_minute,
+    "30": Interval.in_30_minute,
+    "45": Interval.in_45_minute,
+    "1H": Interval.in_1_hour,
+    "2H": Interval.in_2_hour,
+    "3H": Interval.in_3_hour,
+    "4H": Interval.in_4_hour,
+    "1D": Interval.in_daily,
+    "1W": Interval.in_weekly,
+    "1M": Interval.in_monthly
+}
+
+def get_interval(interval_str: str) -> Interval:
+    return INTERVAL_MAP.get(interval_str, Interval.in_5_minute)
+
 
 def get_strategy(strategy: str):
     """

@@ -6,19 +6,19 @@ RISK_FREE_RATE = 0.07 # Risk free rate for Indian market
 
 # --- Risk Metrics Calculation ---
 @njit
-def calculate_sharpe(returns: NDArray, risk_free_rate: float = RISK_FREE_RATE) -> float:
+def calculate_sharpe(returns: NDArray, risk_free_rate: float = 0.0, scaling_factor: float = 252.0) -> float:
     excess_returns = returns - risk_free_rate
-    if len(excess_returns) < 2 and np.std(excess_returns) == 0:
+    if len(excess_returns) < 2 or np.std(excess_returns) == 0:
         return 0.0
-    return np.mean(excess_returns) / np.std(excess_returns) * np.sqrt(252)
+    return np.mean(excess_returns) / np.std(excess_returns) * np.sqrt(scaling_factor)
 
 @njit
-def calculate_sortino(returns: NDArray, risk_free_rate: float = RISK_FREE_RATE) -> float:
+def calculate_sortino(returns: NDArray, risk_free_rate: float = 0.0, scaling_factor: float = 252.0) -> float:
     excess_returns = returns - risk_free_rate
     downside_returns = excess_returns[excess_returns < 0]
     if len(downside_returns) == 0 or np.std(downside_returns) == 0:
         return 0.0
-    return np.mean(excess_returns) / np.std(downside_returns) * np.sqrt(252)
+    return np.mean(excess_returns) / np.std(downside_returns) * np.sqrt(scaling_factor)
 
 def calculate_max_drawdown(returns: NDArray) -> float:
     if len(returns) == 0:

@@ -30,6 +30,7 @@ if __name__ == '__main__':
     parser.add_argument('symbols', nargs='?', type=str, help='Symbols to run')
     parser.add_argument('--download', action='store_true')
     parser.add_argument('--strategy', '-S', type=str, help='Strategy to run')
+    parser.add_argument('--interval', '-I', type=str, default='5', help='Interval (1, 5, 15, 1H, 1D, etc.)')
 
     args = parser.parse_args()
 
@@ -41,8 +42,19 @@ if __name__ == '__main__':
         # Default symbols if none provided
         symbols = ["SBIN", "RELIANCE", "INFY", "TCS", "HDFCBANK", "ICICIBANK", "AXISBANK", "KOTAKBANK", "LT", "ITC"]
 
+    # Resolve Interval
+    from Utilities import get_interval
+    interval_enum = get_interval(args.interval)
+    # Use the passed string args.interval for path, but ensure it maps to enum for download
+    
+    # Path construction: defaults use enum value usually, let's stick to what hist_download does
+    # hist_download uses interval.value.
+    # So if args.interval is "1H", interval_enum.value is "1H".
+    # If args.interval is "5", interval_enum.value is "5".
+    data_path = f"./data/{interval_enum.value}/"
+
     if args.download:
-        hist_download(symbols)
+        hist_download(symbols, interval=interval_enum)
         if not args.strategy:
              exit()
 
@@ -61,9 +73,9 @@ if __name__ == '__main__':
         exit()
 
     # Read data first
-    print(f"Loading data for {len(symbols)} symbols...")
+    print(f"Loading data for {len(symbols)} symbols from {data_path}...")
     # Sequential execution to avoid Windows multiprocessing issues with local functions/pickling
-    argss = [(s, f"./data/5/") for s in symbols]
+    argss = [(s, data_path) for s in symbols]
     data_list = [read_from_csv(*args) for args in argss]
     
     print(f"Running {args.strategy} on {len(symbols)} symbols...")
