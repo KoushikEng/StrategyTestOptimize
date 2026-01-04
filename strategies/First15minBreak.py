@@ -1,9 +1,9 @@
 import numpy as np
 from datetime import datetime
 from Utilities import slippage
-from numba_calculations import calculate_ema, calculate_sma, calculate_ema_slope, calculate_atr
+from indicators.numba import calculate_ema, calculate_sma, calculate_ema_slope, calculate_atr
 from numba import njit
-from vectorized_calculations import vectorized_atr
+from indicators.vectorized import vectorized_atr
 from enum import Enum
 
 mid_time = datetime.strptime("12:30", "%H:%M").time()

@@ -1,17 +1,43 @@
+"""
+Utilities module for the strategy testing and optimization.
+
+This module provides utility functions for downloading historical data, reading CSV files, and reading JSON files.
+"""
+
+import os
 import random
 import csv
 import json
-from typing import List, Optional
+from typing import Dict, Optional, Tuple
 import pytz
 from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor
 from tvDatafeed import TvDatafeed, Interval
 import numpy as np
+import config
+from typing import TypeAlias
+from numpy.typing import NDArray
 
-def slippage(number):
+
+DataTuple: TypeAlias = Tuple[str, NDArray, NDArray, NDArray, NDArray, NDArray, NDArray, NDArray]
+
+
+def get_strategy(strategy: str):
+    """get the strategy class from the stratiges folder"""
+    try:
+        return __import__(f'strategies.{strategy}', fromlist=[strategy])
+    except ImportError:
+        raise ValueError(f"Strategy {strategy} not found")
+    except Exception as e:
+        raise e
+
+
+def slippage(number: float) -> float:
+    """Add random slippage to a number, simulating real-world market slippage. Slippage is a random number between -0.05 and 0.05."""
     return number + random.uniform(-0.05, 0.05)
 
-def read_from_csv(symbol: str, path='hist\\5min\\'):
-    # Read CSV into NumPy arrays
+def read_from_csv(symbol: str, path: str) -> DataTuple:
+    """Read CSV into NumPy arrays."""
     data = np.genfromtxt(f'{path+symbol}_5min.csv', delimiter=',', dtype=None, names=True, encoding='utf-8')
     dates = np.array([datetime.strptime(d, '%Y-%m-%d').date() for d in data['date']])
     times = np.array([datetime.strptime(t, '%H:%M:%S').time() for t in data['time']])
@@ -22,12 +48,13 @@ def read_from_csv(symbol: str, path='hist\\5min\\'):
     volume = data['Volume']
     return symbol, dates, times, opens, highs, lows, closes, volume
 
-def read_column_from_csv(filename, column_name):
+def read_column_from_csv(filename: str, column_name: str) -> list[str]:
+    """Read a specific column from a CSV file."""
     with open(filename, 'r') as file:
         reader = csv.DictReader(file)
         return [row[column_name].replace('-', '_') for row in reader]
     
-def read_json(file_path: str) -> Optional[dict]:
+def read_json(file_path: str) -> Optional[Dict]:
     """Read JSON data synchronously from a file."""
     try:
         with open(file_path, "r") as file:
@@ -35,34 +62,96 @@ def read_json(file_path: str) -> Optional[dict]:
     except (FileNotFoundError, json.JSONDecodeError) as error:
         return None
     
-def hist_download(symbols, exchange="NSE", TZ="Asia/Kolkata", path="hist\\5min\\"):
-    # temp_symbols = []
+def hist_download(symbols: list[str], interval: Interval = Interval.in_5_minute, exchange=config.EXCHANGE, TZ=config.TZ, path: str | None = None, separate_time_column: bool = True) -> None:
+    """Download historical data for a list of symbols.
+    
+    Args:
+        symbols (list[str]): List of symbols to download data for.
+        interval (Interval, optional): Interval for which to download data. Defaults to Interval.in_5_minute.
+        exchange (str, optional): Exchange for which to download data. Defaults to config.EXCHANGE.
+        TZ (str, optional): Timezone for which to download data. Defaults to config.TZ.
+        path (str, optional): Path to save the downloaded data. Defaults to None.
+        separate_time_column (bool, optional): Whether to separate time column. Defaults to True.
+    """
+    if path is None:
+        path = f"./data/{interval.value}/"
+        os.makedirs(path, exist_ok=True)
+    
+    # Interval values
+    # in_1_minute = "1"
+    # in_3_minute = "3"
+    # in_5_minute = "5"
+    # in_15_minute = "15"
+    # in_30_minute = "30"
+    # in_45_minute = "45"
+    # in_1_hour = "1H"
+    # in_2_hour = "2H"
+    # in_3_hour = "3H"
+    # in_4_hour = "4H"
+    # in_daily = "1D"
+    # in_weekly = "1W"
+    # in_monthly = "1M"
+
     tz = pytz.timezone(TZ)
 
     tv = TvDatafeed()
 
-    for i in range(0, len(symbols), 5):
-        temp_symbols = symbols[i: i+5]
-        while temp_symbols:
-            dfs = tv.get_hist(symbols=temp_symbols,exchange=exchange,interval=Interval.in_5_minute,n_bars=10000, dataFrame=False)
+    symbol_retry_count: Dict[str, int] = {}
+    MAX_RETRIES = 3
 
-            for symbol, df in dfs.items():
-                if df is None:
-                    print(f"Data retrieval failed for {symbol}. Skipping...")
-                    continue  # Move to the next symbol
-                temp_symbols.remove(symbol)
+    t_pool = ThreadPoolExecutor(max_workers=5)
 
-                for i in range(len(df)):
-                    dt = datetime.fromtimestamp(df[i][0], tz=tz)
-                    date = dt.date().strftime('%Y-%m-%d')
-                    time = dt.time().strftime('%H:%M:%S')
-                    df[i][0] = date
-                    df[i].insert(1, time)
-                
-                with open(f"{path+symbol}_5min.csv", 'w', newline='') as file:
-                    writer = csv.writer(file)
-                    writer.writerow(['date', 'time', 'Open', 'High', 'Low', 'Close', 'Volume'])  # Write header
-                    writer.writerows(df)  # Write all rows at once
-                    continue
-                
-            # print(len(temp_symbols))
+    try:
+        for i in range(0, len(symbols), 5):
+            temp_symbols = symbols[i: i+5] # Try to download 5 symbols at a time
+            
+            while temp_symbols:
+                # get_hist returns a dictionary of history data for each symbol in the format {symbol: [[timestamp, open, high, low, close, volume], ...]}
+                data = tv.get_hist(symbols=temp_symbols,exchange=exchange,interval=interval,n_bars=10_000, dataFrame=False)
+
+                for symbol, d in data.items():
+                    if d is None:
+                        symbol_retry_count[symbol] = symbol_retry_count.get(symbol, 0) + 1
+                        if symbol_retry_count[symbol] >= MAX_RETRIES:
+                            print(f"Data retrieval failed for {symbol}. Skipping...") # Skip the symbol if it fails 3 times
+                            temp_symbols.remove(symbol)
+                            continue
+                        print(f"Data retrieval failed for {symbol}. Retrying...") # Retry the symbol if it fails less than 3 times
+                        continue
+                    temp_symbols.remove(symbol)
+
+                    t_pool.submit(process_symbol_data, d, path, symbol, separate_time_column, tz)
+                    
+                # print(len(temp_symbols))
+    except Exception as e:
+        print(f"Error downloading data: {e}")
+    finally:
+        t_pool.shutdown()
+
+def process_symbol_data(data: list[list], path: str, symbol: str, separate_time_column: bool = True, tz: pytz.BaseTzInfo = pytz.timezone(config.TZ)) -> None:
+    """Process symbol data.
+    
+    Args:
+        data (list[list]): List of lists containing symbol data.
+        path (str): Path to save the processed data.
+        symbol (str): Symbol to process.
+        separate_time_column (bool, optional): Whether to separate time column. Defaults to True.
+        tz (pytz.BaseTzInfo, optional): Timezone for which to process data. Defaults to pytz.timezone(config.TZ).
+    """
+    try:
+        for i in range(len(data)):
+            dt = datetime.fromtimestamp(data[i][0], tz=tz)
+            date = datetime.fromtimestamp(data[i][0]).strftime('%Y-%m-%d %H:%M:%S')
+            data[i][0] = date
+            if separate_time_column: # If separate_time_column is True, add a time column for selected interval less than 1 day
+                date = dt.date().strftime('%Y-%m-%d')
+                data[i][0] = date
+                time = dt.time().strftime('%H:%M:%S')
+                data[i].insert(1, time)
+    
+        with open(f"{path+symbol}.csv", 'w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(['date', 'time', 'Open', 'High', 'Low', 'Close', 'Volume'])  # Write header
+            writer.writerows(data)  # Write all rows at once
+    except Exception as e:
+        print(f"Error processing symbol {symbol}: {e}")

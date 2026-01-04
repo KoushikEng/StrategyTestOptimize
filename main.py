@@ -1,30 +1,19 @@
-from First15minBreak import run
-from First15minBreakOpps import run as oppRun
-from Utilities import read_json, hist_download, read_from_csv, read_column_from_csv
+"""
+Main module for the strategy testing and optimization.
+
+This module provides the main entry point for the strategy testing and optimization.
+"""
+
+from typing import List
+from Utilities import read_json, hist_download, read_from_csv, get_strategy
 from multiprocessing import Pool
 from multiprocessing.pool import ThreadPool
 from prettytable import PrettyTable
 import math
 import argparse
-from functools import partial
-from ConsoleAnimator import ConsoleAnimator
 import numpy as np
-from numba import njit
+from indicators.risk_metrics import calculate_sharpe, calculate_sortino
 
-@njit
-def calculate_sharpe(returns, risk_free_rate: float = 0.07) -> float:
-    excess_returns = returns - risk_free_rate
-    if len(excess_returns) < 2 and np.std(excess_returns) == 0:
-        return 0.0
-    return round(np.mean(excess_returns) / np.std(excess_returns) * np.sqrt(252), 4)
-
-@njit
-def calculate_sortino(returns, risk_free_rate: float = 0.07) -> float:
-    excess_returns = returns - risk_free_rate
-    downside_returns = excess_returns[excess_returns < 0]
-    if len(downside_returns) == 0 or np.std(downside_returns) == 0:
-        return 0.0
-    return round(np.mean(excess_returns) / np.std(downside_returns) * np.sqrt(252), 4)
 
 def convert_to_double_value_pair(data):
     result = []
@@ -37,71 +26,109 @@ def convert_to_double_value_pair(data):
     return result
 
 if __name__ == '__main__':
-    anim = ConsoleAnimator()
     parser = argparse.ArgumentParser()
-    parser.add_argument('symbol', nargs='?', type=str)
+    parser.add_argument('symbols', nargs='?', type=str, help='Symbols to run')
     parser.add_argument('--download', action='store_true')
-    parser.add_argument('kwargs', nargs='*', help="Keyword arguments in the format key=value")
-    args = parser.parse_args()
-    
-    # print(read_column_from_csv('ind_nifty100list.csv', 'Symbol'))
-    # exit()
-    # symbols = read_json('stocks_list.json')['nifty100']
-    symbols = ["HAL", "BDL", "NAUKRI", "JSWENERGY", "HUDCO", "CGPOWER", "BANKINDIA", "CONCOR", "CHOLAFIN", "TORNTPHARM", "PFC", "TRENT", "RECLTD", "BAJAJ_AUTO"]
-    
-    if args.symbol:
-        symbols = [args.symbol.upper()]
-    
-    if args.download:
-        anim.start("Downloading historical data...")
-        hist_download(symbols)
-        anim.done("Historical data downloaded")
-        
-    kwargs_dict = {}
-    for arg in args.kwargs:
-        if '=' in arg:
-            key, value = arg.split('=', 1)
-            if value == 'T' or value == 'F':
-                kwargs_dict[key] = True if value == 'T' else False
-                continue
-            kwargs_dict[key] = value
-        else:
-            print(f"Invalid argument format: {arg}. Please use key=value")
-    
-    # symbols.remove("YESBANK")
-    # symbols.remove("IDEA")
-    
-    anim.start("Reading CSV files...")
-    with ThreadPool() as pool:
-        argss = pool.map(read_from_csv, symbols)
-    
-    anim.done("CSV files read")
-    
-    run_with_kwargs = partial(run, **kwargs_dict)
-    
-    anim.start("Running backtests...")
-    with Pool() as pool:
-        # Just pass args, since kwargs are already bound
-        results = pool.starmap(run_with_kwargs, argss)
-    anim.done("Backtesting complete")
-    
-    results = [[r[0], round(np.sum(r[1]), 2), r[2], calculate_sharpe(r[1]), calculate_sortino(r[1])] for r in results]
+    parser.add_argument('--strategy', '-S', type=str, help='Strategy to run')
 
-    len_results = len(results)
-    if len_results == 1:
-        print(f"{results[0][0]} Net P/L: {results[0][1]}, wins: {results[0][2]}, sharpe: {results[0][3]}, sortino: {results[0][4]}")
+    args = parser.parse_args()
+
+    symbols = args.symbol.split(',')
+    
+    # symbols = read_json('stocks_list.json')['nifty100']
+    # symbols = ["HAL", "BDL", "NAUKRI", "JSWENERGY", "HUDCO", "CGPOWER", "BANKINDIA", "CONCOR", "CHOLAFIN", "TORNTPHARM", "PFC", "TRENT", "RECLTD", "BAJAJ_AUTO"]
+    
+    if args.symbols:
+        symbols = [args.symbols.upper()]
+    elif args.download:
+        pass # If download only, symbols might be empty or come from default list
+    else:
+        # Default symbols if none provided
+        symbols = ["SBIN", "RELIANCE", "INFY", "TCS", "HDFCBANK", "ICICIBANK", "AXISBANK", "KOTAKBANK", "LT", "ITC"]
+
+    if args.download:
+        hist_download(symbols)
+        if not args.strategy:
+             exit()
+
+    if not args.strategy:
+        print("Please provide a strategy name using --strategy or -S")
         exit()
 
-    weights = [1, 2]
-    sorted_results = sorted(results, key=lambda x: weights[0] * -x[2] + weights[1] * -x[3])[:50]
+    try:
+        strategy_module = get_strategy(args.strategy)
+        # Assuming the class name is the same as the module name + matching file name
+        # Only if the user follows convention: strategies/MyStrat.py -> class MyStrat
+        StrategyClass = getattr(strategy_module, args.strategy)
+        strategy_instance = StrategyClass()
+    except (ValueError, AttributeError) as e:
+        print(f"Error loading strategy '{args.strategy}': {e}")
+        exit()
+
+    # Read data first
+    print(f"Loading data for {len(symbols)} symbols...")
+    with ThreadPool() as pool:
+        # pool.map expects a single argument function, using lambda to pass path
+        # Assuming Data is in ./data/5/ as per default hist_download
+        argss = [(s, f"./data/5/") for s in symbols]
+        # We need a wrapper because read_from_csv takes 2 args
+        data_list = pool.starmap(read_from_csv, argss)
     
-    table_headers = ['Symbol', 'Net P/L', 'Win pct (%)', 'Sharpe', 'sortino']
+    print(f"Running {args.strategy} on {len(symbols)} symbols...")
+    
+    results_table = PrettyTable()
+    results_table.field_names = ["Symbol", "Net Profit %", "Win Rate %", "Sharpe", "Sortino", "Max DD %", "Trades"]
+    results_table.float_format = ".2"
+    
+    def process_result(symbol, retval):
+        equity_curve, returns, win_rate = retval
+        
+        net_profit = (equity_curve[-1] - 1) * 100 if len(equity_curve) > 0 else 0.0
+        sharpe = calculate_sharpe(returns)
+        sortino = calculate_sortino(returns)
+        max_dd = calculate_max_drawdown(returns) * 100
+        total_trades = np.sum(returns != 0)
+        
+        return [symbol, net_profit, win_rate * 100, sharpe, sortino, max_dd, total_trades]
 
-    if len_results <= 20:
-        table = PrettyTable(table_headers)
-        table.add_rows(sorted_results)
-    else:
-        table = PrettyTable(table_headers + ['|'] + [col + ' c2' for col in table_headers])
-        table.add_rows(convert_to_double_value_pair(sorted_results))
+    # Run strategies
+    # Since strategy_instance.run might need kwargs, for now we run with defaults or empty
+    # If optimization params are needed, they should be passed; for main.py we might use defaults
+    
+    final_results = []
+    
+    # Sequential execution for now to debug - switch to Pool if slow
+    # Using Pool for strategy execution
+    with Pool() as pool:
+        # prepare args: each run takes (data, )
+        # strategy_instance.run is bound method
+        # We need to unpack data_list into arguments for starmap if run takes multiple args, 
+        # but run takes (data, **kwargs). 
+        # So we wrap it.
+        
+        # Wrapper to allow pickling if necessary, or just use starmap with instance method
+        # map: func(item). item is data_tuple. run(data).
+        
+        # Note: We need to handle exceptions in strategy run
+        
+        def run_wrapper(data):
+            try:
+                return strategy_instance.run(data)
+            except Exception as e:
+                return (np.array([1.0]), np.array([0.0]), 0.0) # Error return
 
-    print(table)
+        execution_results = pool.map(run_wrapper, data_list)
+        
+    for i, (symbol, *_) in enumerate(data_list):
+        row = process_result(symbol, execution_results[i])
+        results_table.add_row(row)
+        final_results.append(row)
+
+    print(results_table)
+    
+    # Summary stats
+    profits = [r[1] for r in final_results]
+    print(f"\nAverage Profit: {np.mean(profits):.2f}%")
+    print(f"Total Profit: {np.sum(profits):.2f}%")
+        
+    

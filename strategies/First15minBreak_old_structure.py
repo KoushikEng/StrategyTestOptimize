@@ -3,13 +3,13 @@ import math
 import random
 from datetime import datetime
 from Utilities import slippage
-from numba_calculations import calculate_ema, calculate_sma, calculate_ema_slope, calculate_atr
-from vectorized_calculations import vectorized_atr
+from indicators.numba import calculate_ema, calculate_sma, calculate_ema_slope, calculate_atr
+from indicators.vectorized import vectorized_atr
 
 mid_time = datetime.strptime("12:30", "%H:%M").time()
 end_time = datetime.strptime("15:10", "%H:%M").time()
 
-def read_from_csv(symbol: str, path='hist\\5min\\'):
+def read_from_csv(symbol: str, path: str):
     # Read CSV into NumPy arrays
     data = np.genfromtxt(f'{path+symbol}_5min.csv', delimiter=',', dtype=None, names=True, encoding='utf-8')
     dates = np.array([datetime.strptime(d, '%Y-%m-%d').date() for d in data['date']])

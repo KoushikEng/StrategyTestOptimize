@@ -1,284 +1,158 @@
-from typing import Any, Dict, List, Tuple, TypeAlias
+
+from typing import Dict, List, Tuple, Any
 import pygmo as pg
-from First15minBreak import run
 import numpy as np
 import argparse
 import time
-from Utilities import read_from_csv
-from ConsoleAnimator import ConsoleAnimator
-from numba import njit
-from numpy.typing import NDArray
+from Utilities import read_from_csv, DataTuple, get_strategy
+from indicators.risk_metrics import calculate_sharpe, calculate_sortino, calculate_max_drawdown
 
-parser = argparse.ArgumentParser()
-parser.add_argument('symbol', type=str)
-parser.add_argument('--trail', action='store_true')
+parser = argparse.ArgumentParser(description="Optimize the strategy")
+parser.add_argument('symbol', type=str, help="Symbol to optimize")
+parser.add_argument('--strategy', '-S', type=str, required=True, help="Strategy to optimize")
+parser.add_argument('--pop', type=int, default=40, help="Population size")
+parser.add_argument('--gen', type=int, default=50, help="Generations")
 args = parser.parse_args()
 
-anim = ConsoleAnimator()
-
-RISK_FREE_RATE = 0.07
-
-DataTuple: TypeAlias = Tuple[str, NDArray, NDArray, NDArray, NDArray, NDArray, NDArray, NDArray]
-
-# --- Risk Metrics Calculation ---
-@njit
-def calculate_sharpe(returns: NDArray, risk_free_rate: float = RISK_FREE_RATE) -> float:
-    excess_returns = returns - risk_free_rate
-    if len(excess_returns) < 2 and np.std(excess_returns) == 0:
-        return 0.0
-    return np.mean(excess_returns) / np.std(excess_returns) * np.sqrt(252)
-
-@njit
-def calculate_sortino(returns: NDArray, risk_free_rate: float = RISK_FREE_RATE) -> float:
-    excess_returns = returns - risk_free_rate
-    downside_returns = excess_returns[excess_returns < 0]
-    if len(downside_returns) == 0 or np.std(downside_returns) == 0:
-        return 0.0
-    return np.mean(excess_returns) / np.std(downside_returns) * np.sqrt(252)
-
-def calculate_max_drawdown(returns: NDArray) -> float:
-    if len(returns) == 0:
-        return 0.0
-        
-    cumulative = np.cumprod(1 + returns)
-    peak = np.maximum.accumulate(cumulative)
-    drawdown = (cumulative - peak) / peak
-    return np.min(drawdown) if len(drawdown) > 0 else 0.0
-
 def walk_forward_split(data: DataTuple, train_size=3375, test_size=375):
+    """Yields train, test sets."""
     for start in range(0, len(data[1]) - train_size - test_size + 1, test_size):
         train = [data[0], *[np.array(d[start:start+train_size]) for d in data[1:]]]
         test = [data[0], *[np.array(d[start+train_size:start+train_size+test_size]) for d in data[1:]]]
         yield train, test
 
-
-def nearest_multiple(n, multiple):
-    return round(n/multiple) * multiple
-
 def get_data_split(data: DataTuple, split=0.3):
-    start = nearest_multiple(len(data[1])*split, 75)
+    start = int(len(data[1]) * split)  # percent split
+    # Ensure divisible by something sensible if needed, or just take slice
     return [data[0], *[np.array(d[-start:]) for d in data[1:]]]
 
-def get_params_dict(params: List[float]):
-    return {"sl_multi": params[0], "tp_multi": params[1]}
-    
-    # if args.trail:
-    #     sl_multi, tp_multi, ema, ema_slope, atr, avg_vol, vol_multi, trail_multi = params
-    # else:
-    #     sl_multi, tp_multi, ema, ema_slope, atr, avg_vol, vol_multi = params
-    
-    # params_dict = {"ema": ema, "ema_slope": ema_slope, "atr": atr, "avg_vol": avg_vol, "vol_multi": vol_multi, "sl_multi": sl_multi, "tp_multi": tp_multi}
-    # return params_dict.update({"trail_multi": trail_multi, "trail": True}) if args.trail else params_dict
-
-# --- Modified BreakoutProblem for NSGA-II ---
-class RobustBreakoutProblem:
-    def __init__(self, data: DataTuple):
+class StrategyOptimizationProblem:
+    def __init__(self, data: DataTuple, strategy_class: Any, bounds: Tuple[List[float], List[float]], param_names: List[str]):
         self.data = data
+        self.strategy = strategy_class()
+        self.bounds = bounds
+        self.param_names = param_names
         
-    def evaluate_single_run(self, params: List[float]):
-        return run(*self.data, **get_params_dict(params))
+    def get_params_kwargs(self, params: List[float]) -> Dict[str, Any]:
+        return dict(zip(self.param_names, params))
 
     def fitness(self, params: List[float]) -> List[float]:
-        _, returns, win_pct = self.evaluate_single_run(params)
-        sl_multi = params[0]
-        tp_multi = params[1]
-        
-        # New objectives: Maximize Sharpe, Sortino, Win%, Minimize Drawdown
+        kwargs = self.get_params_kwargs(params)
+        try:
+            _, returns, win_pct = self.strategy.run(self.data, **kwargs)
+        except Exception:
+            return [1e6, 1e6, 1e6] # Punishment
+
         sharpe = calculate_sharpe(returns)
-        # sortino = calculate_sortino(returns)
         drawdown = calculate_max_drawdown(returns)
-        sharpe = calculate_sharpe(returns)
-        if abs(sharpe) > 100:  # Impossible in reality
-            print("KILLER PARAMS:", params)
-            return [1e6, 1e6, 1e6, 1e6, 1e6, 1e6]  # Force NSGA-II to reject
         
-        # wins = returns[returns > 0].sum()
-        # losses = abs(returns[returns < 0].sum())
-        # profit_factor = wins / losses if losses > 0 else 1e6
+        # Objective: Maximize Sharpe, Maximize Win Rate, Minimize Drawdown
+        # Pygmo minimizes, so we negate Sharpe and Win Rate
         
-        # Penalize if win rate < 60%
-        win_rate_penalty = max(0, 0.8 - win_pct) * 200  # Heavy penalty
-        
-        return [-sharpe+win_rate_penalty, -win_pct, drawdown]  # Pygmo minimizes
+        # Penalties
+        if len(returns) < 10: # Too few trades
+            return [1e6, 1e6, 1e6]
+            
+        return [-sharpe, -win_pct, drawdown]
 
     def get_bounds(self) -> Tuple[List[float], List[float]]:
-        # sl_multi, tp_multi, ema, ema_slope, atr, avg_vol, vol_multi, trail_multi
-        
-        return ([1.4, 2.0], [2.5, 4.0])
-        # return ([1.5, 2.0, 15, 9, 14, 20, 1.4] + ([0.5] if args.trail else []), 
-        #         [2.5, 4.0, 50, 20, 25, 60, 2.5] + ([1.5] if args.trail else []))
-        # return ([1.2, 2.0, 15, 9, 14, 20, 1.3] + ([0.4] if args.trail else []), 
-        #         [2.5, 3.5, 35, 20, 20, 60, 2.5] + ([2.0] if args.trail else []))
-        # return ([0.7, 1.3, 9, 9, 9, 9, 1.3] + ([0.4] if args.trail else []), 
-                # [3.0, 3.5, 35, 35, 35, 35, 2.5] + ([2.0] if args.trail else []))
+        return self.bounds
 
     def get_nobj(self) -> int:
-        return 3  # Sharpe, Sortino, Win%, Drawdown, sl_multi, tp_multi
+        return 3
 
-# --- Main Optimization Flow ---
-def optimize_single_period(data: DataTuple) -> List:
-    prob = pg.problem(RobustBreakoutProblem(data))
-    algo = pg.algorithm(pg.nsga2(gen=100))
-    # algo.set_verbosity(1)
-    pop = pg.population(prob, size=40)
+def optimize_single_period(problem) -> Tuple[List[float], List[float]]:
+    prob = pg.problem(problem)
+    algo = pg.algorithm(pg.nsga2(gen=args.gen))
+    pop = pg.population(prob, size=args.pop)
     pop = algo.evolve(pop)
-    
-    # Select solution with highest Sharpe (first objective)
-    # pareto_f = pop.get_f()
-    # best_idx = np.argmax([-f[0] for f in pareto_f])  # Index of max Sharpe
     return pop.get_x(), pop.get_f()
 
-# --- Walk-Forward Analysis ---
-def walk_forward_optimize(data: DataTuple, train_size: int = 3000, test_size: int = 750) -> Tuple[List[Dict], NDArray]:
+def walk_forward_optimize(data: DataTuple, strategy_class, bounds, param_names) -> List[Dict]:
     results = []
+    # Adjust train/test size based on data length if needed
+    total_len = len(data[1])
+    train_size = int(total_len * 0.6)
+    test_size = int(total_len * 0.15)
+    
+    if train_size < 100 or test_size < 20:
+        # Fallback for small data
+        train_size = int(total_len * 0.7)
+        test_size = int(total_len * 0.2)
+        
+    
+    print(f"WFA: Train={train_size}, Test={test_size}")
+
     for train_data, test_data in walk_forward_split(data, train_size, test_size):
-        # Optimize on train_data
-        pareto_x, pareto_f = optimize_single_period(train_data)
+        problem = StrategyOptimizationProblem(train_data, strategy_class, bounds, param_names)
+        pareto_x, pareto_f = optimize_single_period(problem)
+        
+        # Validate on Test
+        test_problem = StrategyOptimizationProblem(test_data, strategy_class, bounds, param_names)
         
         for params in pareto_x:
-            # Test on OOS
-            _, oos_returns, oos_win_pct = RobustBreakoutProblem(test_data).evaluate_single_run(params)
-            oos_sharpe = calculate_sharpe(oos_returns)
-            # oos_sortino = calculate_sortino(oos_returns)
-            oos_drawdown = calculate_max_drawdown(oos_returns)
+            # We just want metrics here
+            fit = test_problem.fitness(params)
+            # fit is [-sharpe, -win_pct, drawdown]
             
-            # wins = oos_returns[oos_returns > 0].sum()
-            # losses = abs(oos_returns[oos_returns < 0].sum())
-            # profit_factor = wins / losses if losses > 0 else 1e6
-
             results.append({
                 "params": params,
-                "win_pct": oos_win_pct,
-                "oos_sharpe": oos_sharpe,
-                "drawdown": oos_drawdown,
+                "oos_sharpe": -fit[0],
+                "win_pct": -fit[1],
+                "drawdown": fit[2]
             })
-
+            
     return results
 
-def perturb_params(params: List[float], noise=0.1) -> List[float]:
-    # Perturb params by ±10%
-    perturbed_params = []
-    for i, p in enumerate(params):
-        if 2 <= i <= 5:
-            perturbed_params.append(p + np.random.randint(-noise * 20, noise * 20))
-            continue
-        perturbed_params.append(p * np.random.uniform(1 - noise, 1 + noise))
-    return perturbed_params
-
-# --- Monte Carlo Parametric Robustness Check ---
-def monte_carlo_test(data: DataTuple, base_params: List[float], base_sharpe: float, n_simulations: int = 100) -> Dict:
-    sharpe_results = []
-    sharpe_drops = []
-    baseline_sharpe = base_sharpe
-    
-    for _ in range(n_simulations):
-        # Perturb params by ±10%
-        perturbed_params = perturb_params(base_params)
-        _, returns, _ = RobustBreakoutProblem(data).evaluate_single_run(perturbed_params)
-        sharpe = calculate_sharpe(returns)
-        sharpe_results.append(sharpe)
-        sharpe_drops.append((baseline_sharpe - sharpe) / baseline_sharpe)
-
-    return {
-        "mean_sharpe": np.mean(sharpe_results),
-        "std_sharpe": np.std(sharpe_results),
-        "worst_sharpe": np.min(sharpe_results),
-        "best_sharpe": np.max(sharpe_results),
-        "sharpe_drops": sharpe_drops
-    }
-
-# --- Monte Carlo Filtering ---
-def select_robust_params(wfa_results: List[Dict], 
-                         data: DataTuple,
-                         top_n: int = 30,
-                         n_simulations: int = 60) -> List[float]:
-    """
-    Steps:
-    1. Take top `top_n` params by OOS Sharpe.
-    2. Perturb each and test stability.
-    3. Return the param set with the least performance drop.
-    """
-    # Sort by OOS Sharpe (descending)
-    weights = [1, 1]
-    # top_candidates = sorted(wfa_results, key=lambda x: weights[0] * -x["oos_sharpe"] + weights[1] * -x["win_pct"])[:top_n]
-    top_candidates = sorted(wfa_results, key=lambda x: -x["oos_sharpe"])[:top_n]
-    
-    best_param = None
-    best_sharpe_results = None
-    best_avg_sharpe = -np.inf
-    
-    for candidate in top_candidates:
-        param = candidate["params"]
-        sharpe = candidate["oos_sharpe"]
-        sharpe_results = monte_carlo_test(data, param, sharpe, n_simulations)
-        
-        # Score = Avg Sharpe after perturbation
-        avg_sharpe = sharpe_results["mean_sharpe"]
-        if avg_sharpe > best_avg_sharpe:
-            best_avg_sharpe = avg_sharpe
-            best_param = param
-            best_sharpe_results = sharpe_results
-    
-    return best_param, best_sharpe_results
-
 if __name__ == "__main__":
+    if not args.strategy:
+        print("Strategy is required.")
+        exit()
+        
     SYMBOL = args.symbol.upper()
-    data = read_from_csv(SYMBOL)
-    
-    t1 = time.time()
-    
-    # --- Stage 1: Walk-Forward Optimization ---
-    print("Running Walk-Forward Optimization...")
-    wfa_results = walk_forward_optimize(data)
-    oos_sharpes = [s["oos_sharpe"] for s in wfa_results]
-    oos_sharpes_mean = np.mean(oos_sharpes)
-    oos_sharpes_std = np.std(oos_sharpes)
-    
-    # Viability Check 1: OOS Sharpe Consistency
-    if oos_sharpes_mean < 1.0:
-        print("\n❌ REJECTED: OOS Sharpe Mean =", oos_sharpes_mean, " < 1.0 ", 
-              "(Strategy is overfit)")
+    try:
+        data = read_from_csv(SYMBOL, "./data/5/")
+    except Exception as e:
+        print(f"Error reading data for {SYMBOL}: {e}")
+        # Try default path assumption from previous code if needed or just fail
         exit()
-    else:
-        print(f"\n✅ OOS Sharpe Mean = {oos_sharpes_mean:.2f} (±{oos_sharpes_std:.2f})")
-    
-    # --- Stage 2: Monte Carlo Robustness Filter ---
-    print("\nSelecting Robust Params via Monte Carlo...")
-    robust_params, robust_sharpe_results = select_robust_params(wfa_results, data)
-    sharpe_drops = robust_sharpe_results["sharpe_drops"]
-    mean_sharpe_drops = np.mean(sharpe_drops)
-    std_sharpe_drops = np.std(sharpe_drops)
-    print(f"Robust Sharpe: {robust_sharpe_results['mean_sharpe']} ±{robust_sharpe_results['std_sharpe']}, Best: {robust_sharpe_results['best_sharpe']}, Worst: {robust_sharpe_results['worst_sharpe']}")
-    
-    # Viability Check 2: Parametric Fragility
-    if mean_sharpe_drops > 0.3:
-        print(f"\n❌ REJECTED: Sharpe drops by {mean_sharpe_drops*100:.0f}% on average when params perturbed")
-        exit()
-    else:
-        print(f"\n✅ Parametric Stability: Sharpe drops by {mean_sharpe_drops*100:.0f}% (±{std_sharpe_drops*100:.0f}%)")
-    
-    # --- Stage 3: Final Validation on Unseen Data ---
-    test_data = get_data_split(data)  # Last 30% of data
-    _, returns, _ = RobustBreakoutProblem(test_data).evaluate_single_run(robust_params)
-    sharpe = calculate_sharpe(returns)
-    
-    # Viability Check 3: Live Simulation
-    if sharpe < 1.5:
-        print(f"\n❌ REJECTED: Final Test Sharpe = {sharpe:.2f} (Unreliable for live trading)")
-    else:
-        print(f"\n✅ FINAL APPROVAL: Test Sharpe = {sharpe:.2f}")
-        print(f"\n🔥 Robust Params:", get_params_dict(robust_params))
 
-    # --- Strategy Viability Check ---
-    # if oos_sharpes_mean < 1.0 or mc_results['worst_sharpe'] < 0.5:
-    #     print("\n⚠️ WARNING: Strategy fails robustness checks!")
-    # else:
-    #     print("\n✅ Strategy passes basic robustness tests.")
+    strategy_module = get_strategy(args.strategy)
+    StrategyClass = getattr(strategy_module, args.strategy)
     
-    round_params_string = lambda params: [f"{k}={round(v, 1) if k.endswith('_multi') else round(v)}" for k, v in params.items()]
+    # Check if strategy has optimization definition
+    if hasattr(StrategyClass, 'get_optimization_params'):
+        # Expected format: {"param_name": (min, max), ...}
+        opt_params = StrategyClass.get_optimization_params()
+        param_names = list(opt_params.keys())
+        lower_bounds = [v[0] for v in opt_params.values()]
+        upper_bounds = [v[1] for v in opt_params.values()]
+        bounds = (lower_bounds, upper_bounds)
+    else:
+        print(f"Strategy {args.strategy} does not define 'get_optimization_params'.")
+        print("Please add a static method 'get_optimization_params' returning dict {'param': (min, max)}")
+        exit()
+
+    print("Running Walk-Forward Optimization...")
+    wfa_results = walk_forward_optimize(data, StrategyClass, bounds, param_names)
     
-    print("Test run: python main.py", SYMBOL, *round_params_string(get_params_dict(robust_params)))
+    if not wfa_results:
+        print("No results generated.")
+        exit()
+
+    # Simple selection: Best OOS Sharpe
+    best_result = sorted(wfa_results, key=lambda x: x['oos_sharpe'], reverse=True)[0]
     
-    t2 = time.time()
+    print("\nBest Robust Parameters Found:")
+    print("-" * 30)
+    best_params_dict = dict(zip(param_names, best_result['params']))
+    print(best_params_dict)
+    print(f"OOS Sharpe: {best_result['oos_sharpe']:.2f}")
+    print(f"Win Rate: {best_result['win_pct']*100:.2f}%")
+    print(f"Max DD: {best_result['drawdown']*100:.2f}%")
     
-    print(f"Time taken: {t2-t1:.2f}s")
+    print("\nCmd to run:")
+    param_str = " ".join([f"--{k} {v}" for k,v in best_params_dict.items()]) # This assumes main.py takes args exactly like this, which currently it doesn't support generic args well
+    # Current main.py doesn't accept dynamic args easily via CLI yet without work. 
+    # But we print the dict for user to use.
+

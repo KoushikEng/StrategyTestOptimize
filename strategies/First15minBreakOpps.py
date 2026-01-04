@@ -7,7 +7,7 @@ from Utilities import slippage
 mid_time = datetime.strptime("12:30", "%H:%M").time()
 end_time = datetime.strptime("15:10", "%H:%M").time()
 
-def read_from_csv(symbol: str, path='hist\\5min\\'):
+def read_from_csv(symbol: str, path: str):
     # Read CSV into NumPy arrays
     data = np.genfromtxt(f'{path+symbol}_5min.csv', delimiter=',', dtype=None, names=True, encoding='utf-8')
     dates = np.array([datetime.strptime(d, '%Y-%m-%d').date() for d in data['date']])

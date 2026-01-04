@@ -1,4 +1,6 @@
 __pycache__
 .venv
-hist/*
 *_debug.txt
+results
+*.code-workspace
+data/
