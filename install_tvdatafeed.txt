@@ -1,0 +1,1 @@
+pip install --upgrade --no-cache-dir git+https://github.com/koushikghosh11/tvdatafeed.git

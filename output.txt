@@ -1,0 +1,17 @@
+Traceback (most recent call last):
+  File "C:\Users\koushik\Desktop\StrategyTestOptimize\optimize.py", line 137, in <module>
+    wfa_results = walk_forward_optimize(data, StrategyClass, bounds, param_names)
+  File "C:\Users\koushik\Desktop\StrategyTestOptimize\optimize.py", line 88, in walk_forward_optimize
+    pareto_x, pareto_f = optimize_single_period(problem)
+  File "C:\Users\koushik\Desktop\StrategyTestOptimize\optimize.py", line 68, in optimize_single_period
+    pop = algo.evolve(pop)
+ValueError: 
+function: evolve
+where: D:\bld\pagmo_1675799004243\work\src\algorithms\nsga2.cpp, 127
+what: for NSGA-II at least 5 individuals in the population are needed and the population size must be a multiple of 4. Detected input population size is: 4
+
+
+ERROR conda.cli.main_run:execute(125): `conda run python optimize.py SBIN --strategy SimpleMACross --gen 2 --pop 4` failed. (See above for error)
+Running Walk-Forward Optimization...
+WFA: Train=3157, Test=789
+

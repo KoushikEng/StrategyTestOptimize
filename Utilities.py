@@ -23,7 +23,15 @@ DataTuple: TypeAlias = Tuple[str, NDArray, NDArray, NDArray, NDArray, NDArray, N
 
 
 def get_strategy(strategy: str):
-    """get the strategy class from the stratiges folder"""
+    """
+    Import the strategy module from the strategies folder.
+    
+    Args:
+        strategy (str): name of the strategy
+    
+    Returns:
+        module: strategy module
+    """
     try:
         return __import__(f'strategies.{strategy}', fromlist=[strategy])
     except ImportError:
@@ -38,7 +46,7 @@ def slippage(number: float) -> float:
 
 def read_from_csv(symbol: str, path: str) -> DataTuple:
     """Read CSV into NumPy arrays."""
-    data = np.genfromtxt(f'{path+symbol}_5min.csv', delimiter=',', dtype=None, names=True, encoding='utf-8')
+    data = np.genfromtxt(f'{path+symbol}.csv', delimiter=',', dtype=None, names=True, encoding='utf-8')
     dates = np.array([datetime.strptime(d, '%Y-%m-%d').date() for d in data['date']])
     times = np.array([datetime.strptime(t, '%H:%M:%S').time() for t in data['time']])
     opens = data['Open']
