@@ -17,6 +17,7 @@ import numpy as np
 import config
 from typing import TypeAlias
 from numpy.typing import NDArray
+from types import ModuleType
 
 
 DataTuple: TypeAlias = Tuple[str, NDArray, NDArray, NDArray, NDArray, NDArray, NDArray, NDArray]
@@ -41,7 +42,7 @@ def get_interval(interval_str: str) -> Interval:
     return INTERVAL_MAP.get(interval_str, Interval.in_5_minute)
 
 
-def get_strategy(strategy: str):
+def get_strategy(strategy: str) -> ModuleType:
     """
     Import the strategy module from the strategies folder.
     

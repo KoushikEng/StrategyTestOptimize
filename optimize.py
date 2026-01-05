@@ -38,6 +38,11 @@ def get_data_split(data: DataTuple, split=0.3):
     # Ensure divisible by something sensible if needed, or just take slice
     return [data[0], *[np.array(d[-start:]) for d in data[1:]]]
 
+def calculate_robust_score(sortino: np.float32, drawdown: np.float32, total_return: np.float32) -> np.float32:
+    """Calculate the robust score for a strategy."""
+    
+    return sortino * (1.0 + drawdown) * np.log1p(1.0 + abs(total_return))
+
 class StrategyOptimizationProblem:
     def __init__(self, data: DataTuple, strategy_class: Type[Base], bounds: Tuple[List[float], List[float]], param_names: List[str]):
         self.data = data
@@ -74,9 +79,31 @@ class StrategyOptimizationProblem:
             return [1e6]
             
         sharpe = calculate_sharpe(trades) # Trade Sharpe
-        # Drawdown can be incorporated as penalty or constraint if needed, but for now just Sharpe
+        sortino = calculate_sortino(trades)
+        drawdown = calculate_max_drawdown(returns) # Max DD from equity curve perspective (using full returns)
+        total_return = np.sum(returns)
         
-        return [-sharpe]
+        # Robust Score Calculation:
+        # We want to Maximize: Sortino * (1 - DD) ... wait DD is usually positive 0 to 1 in this impl?
+        # Let's check calculate_max_drawdown in risk_metrics. It returns positive or negative?
+        # Usually DD is negative value like -0.20. Let's assume it returns negative value based on inspection or verify.
+        # Verified file: calculate_max_drawdown returns `np.min(drawdown)` which would be negative (e.g., -0.20).
+        # So we want to maximize (1 + MaxDD) where MaxDD is -ve.
+        # Score = Sortino * (1 + MaxDD) * log(1 + abs(TotalReturn))
+        
+        # Check for NaN/Inf
+        if np.isnan(sharpe) or np.isnan(sortino):
+            return [1e6]
+
+        # Composite score
+        # Using Sortino as base because it penalizes bad volatility.
+        # Penalty for DD: If DD is -50%, (1 + -0.5) = 0.5 multiplier.
+        # Boost for Return: log(1 + abs(ret)) for scaling.
+        
+        score = calculate_robust_score(sortino, drawdown, total_return)
+        
+        # Invert for minimization
+        return [-score]
 
     def get_bounds(self) -> Tuple[List[float], List[float]]:
         return self.bounds
@@ -130,13 +157,22 @@ def walk_forward_optimize(data: DataTuple, strategy_class: Type[Base], bounds, p
                 continue
                 
             sharpe = calculate_sharpe(trades)
+            sortino = calculate_sortino(trades)
             drawdown = calculate_max_drawdown(returns)
+            total_return = np.sum(returns)
             
+            # Recalculate robust score for sorting
+            # (Matches fitness logic approx, but we sort explicitly later)
+            robust_score = calculate_robust_score(sortino, drawdown, total_return)
+
             res = {
                 "params": params,
                 "oos_sharpe": sharpe,
+                "oos_sortino": sortino,
+                "total_return": total_return,
                 "win_pct": win_pct,
-                "drawdown": drawdown
+                "drawdown": drawdown,
+                "robust_score": robust_score
             }
             results.append(res)
             
@@ -161,7 +197,7 @@ if __name__ == "__main__":
 
     # Get strategy class
     strategy_module = get_strategy(args.strategy)
-    StrategyClass = getattr(strategy_module, args.strategy)
+    StrategyClass: Type[Base] = getattr(strategy_module, args.strategy)
     
     # Check if strategy has optimization definition
     if hasattr(StrategyClass, 'get_optimization_params'):
@@ -183,14 +219,17 @@ if __name__ == "__main__":
         print("No results generated.")
         exit()
 
-    # Simple selection: Best OOS Sharpe
-    best_result = sorted(wfa_results, key=lambda x: x['oos_sharpe'], reverse=True)[0]
+    # Selection: Best Robust Score
+    best_result = sorted(wfa_results, key=lambda x: x['robust_score'], reverse=True)[0]
     
     print("\nBest Robust Parameters Found:")
     print("-" * 30)
     best_params_dict = dict(zip(param_names, best_result['params']))
     print(best_params_dict)
+    print(f"Robust Score: {best_result['robust_score']:.4f}")
     print(f"OOS Sharpe: {best_result['oos_sharpe']:.2f}")
+    print(f"OOS Sortino: {best_result['oos_sortino']:.2f}")
+    print(f"Total Return: {best_result['total_return']*100:.2f}%")
     print(f"Win Rate: {best_result['win_pct']*100:.2f}%")
     print(f"Max DD: {best_result['drawdown']*100:.2f}%")
     

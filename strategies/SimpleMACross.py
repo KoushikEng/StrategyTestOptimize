@@ -72,8 +72,6 @@ class SimpleMACross(Base):
         
         return returns
     
-        return returns
-    
     def validate_params(self, fast_ma=50, slow_ma=200, **kwargs) -> bool:
         return slow_ma > fast_ma
 

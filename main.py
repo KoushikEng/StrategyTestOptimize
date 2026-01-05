@@ -4,7 +4,7 @@ Main module for the strategy testing and optimization.
 This module provides the main entry point for the strategy testing and optimization.
 """
 
-from typing import List
+from typing import List, Type
 from Utilities import read_json, hist_download, read_from_csv, get_strategy
 from multiprocessing import Pool
 from multiprocessing.pool import ThreadPool
@@ -13,7 +13,7 @@ import math
 import argparse
 import numpy as np
 from indicators.risk_metrics import calculate_sharpe, calculate_sortino, calculate_max_drawdown
-
+from strategies.Base import Base
 
 def convert_to_double_value_pair(data):
     result = []
@@ -66,7 +66,7 @@ if __name__ == '__main__':
         strategy_module = get_strategy(args.strategy)
         # Assuming the class name is the same as the module name + matching file name
         # Only if the user follows convention: strategies/MyStrat.py -> class MyStrat
-        StrategyClass = getattr(strategy_module, args.strategy)
+        StrategyClass: Type[Base] = getattr(strategy_module, args.strategy)
         strategy_instance = StrategyClass()
     except (ValueError, AttributeError) as e:
         print(f"Error loading strategy '{args.strategy}': {e}")
