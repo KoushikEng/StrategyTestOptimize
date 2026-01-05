@@ -4,9 +4,9 @@ Main module for the strategy testing and optimization.
 This module provides the main entry point for the strategy testing and optimization.
 """
 
-from typing import List, Type
-from Utilities import read_json, hist_download, read_from_csv, get_strategy
-from multiprocessing import Pool
+from typing import Type
+from Utilities import hist_download, read_from_csv, get_strategy
+from multiprocessing import Pool, cpu_count
 from multiprocessing.pool import ThreadPool
 from prettytable import PrettyTable
 import math
@@ -14,6 +14,7 @@ import argparse
 import numpy as np
 from indicators.risk_metrics import calculate_sharpe, calculate_sortino, calculate_max_drawdown
 from strategies.Base import Base
+from functools import partial
 
 def convert_to_double_value_pair(data):
     result = []
@@ -26,11 +27,12 @@ def convert_to_double_value_pair(data):
     return result
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(description="Run the strategy")
     parser.add_argument('symbols', nargs='?', type=str, help='Symbols to run')
     parser.add_argument('--download', action='store_true')
     parser.add_argument('--strategy', '-S', type=str, help='Strategy to run')
     parser.add_argument('--interval', '-I', type=str, default='5', help='Interval (1, 5, 15, 1H, 1D, etc.)')
+    parser.add_argument('--kwargs', type=str, default='', help='Additional kwargs for strategy')
 
     args = parser.parse_args()
 
@@ -41,6 +43,30 @@ if __name__ == '__main__':
     else:
         # Default symbols if none provided
         symbols = ["SBIN", "RELIANCE", "INFY", "TCS", "HDFCBANK", "ICICIBANK", "AXISBANK", "KOTAKBANK", "LT", "ITC"]
+
+    symbol_len = len(symbols)
+
+    kwargs = {}
+    if args.kwargs:
+        for arg in args.kwargs.split(','):
+            if '=' in arg:
+                key, value = arg.split('=', 1)
+
+                if ':' in key:
+                    key, dtype = key.split(':', 1)
+                else:
+                    dtype = 'str'
+                
+                if dtype == 'int':
+                    kwargs[key] = int(value)
+                elif dtype == 'float':
+                    kwargs[key] = float(value)
+                else:
+                    kwargs[key] = value
+                # print(f"{key} ({type(key)}) -> {value} ({type(kwargs[key])})")
+            else:
+                print(f"Invalid argument format: {arg}. Please use key:datatype=value")
+
 
     # Resolve Interval
     from Utilities import get_interval
@@ -73,12 +99,13 @@ if __name__ == '__main__':
         exit()
 
     # Read data first
-    print(f"Loading data for {len(symbols)} symbols from {data_path}...")
+    print(f"Loading data for {symbol_len} symbols from {data_path}...")
     # Sequential execution to avoid Windows multiprocessing issues with local functions/pickling
     argss = [(s, data_path) for s in symbols]
-    data_list = [read_from_csv(*args) for args in argss]
+    with ThreadPool(processes=min(5, symbol_len)) as pool:
+        data_list = pool.starmap(read_from_csv, argss)
     
-    print(f"Running {args.strategy} on {len(symbols)} symbols...")
+    print(f"Running {args.strategy} on {symbol_len} symbols...")
     
     results_table = PrettyTable()
     results_table.field_names = ["Symbol", "Net Profit %", "Win Rate %", "Sharpe", "Sortino", "Max DD %", "Trades"]
@@ -97,13 +124,11 @@ if __name__ == '__main__':
     final_results = []
     
     execution_results = []
-    for data in data_list:
-        try:
-            res = strategy_instance.process(data)
-            execution_results.append(res)
-        except Exception as e:
-            print(f"Error running strategy on {data[0]}: {e}")
-            execution_results.append((np.array([1.0]), np.array([0.0]), 0.0))
+
+    run_with_kwargs = partial(strategy_instance.process, **kwargs)
+    
+    with Pool(processes=min(cpu_count(), symbol_len)) as pool:
+        execution_results = pool.map(run_with_kwargs, data_list)
         
     for i, (symbol, *_) in enumerate(data_list):
         row = process_result(symbol, execution_results[i])
