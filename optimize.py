@@ -10,8 +10,8 @@ from strategies.Base import Base
 parser = argparse.ArgumentParser(description="Optimize the strategy")
 parser.add_argument('symbol', type=str, help="Symbol to optimize")
 parser.add_argument('--strategy', '-S', type=str, required=True, help="Strategy to optimize")
-parser.add_argument('--pop', type=int, default=40, help="Population size per island")
-parser.add_argument('--gen', type=int, default=50, help="Generations")
+parser.add_argument('--pop', type=int, default=80, help="Population size per island")
+parser.add_argument('--gen', type=int, default=200, help="Generations")
 parser.add_argument('--interval', '-I', type=str, default='5', help='Interval (1, 5, 15, 1H, 1D, etc.)')
 args = parser.parse_args()
 
@@ -45,6 +45,11 @@ class StrategyOptimizationProblem:
     def evaluate(self, params: List[float]) -> Tuple[np.ndarray, np.ndarray, float, int]:
         # returns, equity_curve, win_rate, no_of_trades
         kwargs = self.get_params_kwargs(params)
+        
+        # Check constraints
+        if not self.strategy.validate_params(**kwargs):
+            return (np.array([0.0]), np.array([1.0]), 0.0, 0)
+            
         try:
             return self.strategy.process(self.data, **kwargs)
         except Exception:
