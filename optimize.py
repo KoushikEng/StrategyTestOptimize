@@ -1,4 +1,4 @@
-from typing import Dict, List, Tuple, Any
+from typing import Dict, List, Tuple, Any, Type
 import pygmo as pg
 import numpy as np
 import argparse
@@ -32,9 +32,9 @@ def get_data_split(data: DataTuple, split=0.3):
     return [data[0], *[np.array(d[-start:]) for d in data[1:]]]
 
 class StrategyOptimizationProblem:
-    def __init__(self, data: DataTuple, strategy_class: Base, bounds: Tuple[List[float], List[float]], param_names: List[str]):
+    def __init__(self, data: DataTuple, strategy_class: Type[Base], bounds: Tuple[List[float], List[float]], param_names: List[str]):
         self.data = data
-        self.strategy: Base = strategy_class()
+        self.strategy = strategy_class()
         self.bounds = bounds
         self.param_names = param_names
         self.n_obj = 1 # Single objective
@@ -42,16 +42,17 @@ class StrategyOptimizationProblem:
     def get_params_kwargs(self, params: List[float]) -> Dict[str, Any]:
         return dict(zip(self.param_names, params))
 
-    def evaluate(self, params: List[float]):
+    def evaluate(self, params: List[float]) -> Tuple[np.ndarray, np.ndarray, float, int]:
+        # returns, equity_curve, win_rate, no_of_trades
         kwargs = self.get_params_kwargs(params)
         try:
-            return self.strategy.run(self.data, **kwargs)
+            return self.strategy.process(self.data, **kwargs)
         except Exception:
-            return (np.array([1.0]), np.array([0.0]), 0.0)
+            return (np.array([0.0]), np.array([1.0]), 0.0, 0)
 
     def fitness(self, params: List[float]) -> List[float]:
-        # returns, equity, win_rate
-        _, returns, win_pct = self.evaluate(params)
+        # returns, equity_curve, win_rate, no_of_trades
+        returns, _, _, _ = self.evaluate(params)
         
         # Use Trade-based metrics for optimization stability
         trades = returns[returns != 0]
@@ -87,7 +88,7 @@ def optimize_single_period(problem) -> Tuple[List[float], List[float]]:
     # Single objective: Champions are the best found from each island
     return archi.get_champions_x(), archi.get_champions_f()
 
-def walk_forward_optimize(data: DataTuple, strategy_class, bounds, param_names) -> List[Dict]:
+def walk_forward_optimize(data: DataTuple, strategy_class: Type[Base], bounds, param_names) -> List[Dict]:
     results = []
     total_len = len(data[1])
     train_size = int(total_len * 0.4)
@@ -108,7 +109,7 @@ def walk_forward_optimize(data: DataTuple, strategy_class, bounds, param_names) 
         
         for params in pareto_x:
             # Re-run to get full metrics
-            _, returns, win_pct = test_problem.evaluate(params)
+            returns, _, win_pct, _ = test_problem.evaluate(params)
             trades = returns[returns != 0]
             
             if len(trades) < 2:

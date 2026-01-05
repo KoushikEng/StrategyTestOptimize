@@ -68,18 +68,9 @@ class SimpleMACross(Base):
         fast_ma = int(fast_ma)
         slow_ma = int(slow_ma)
         
-        returns, entries, exits = fast_numba_strategy(closes, fast_ma, slow_ma)
+        returns, _, _ = fast_numba_strategy(closes, fast_ma, slow_ma)
         
-        # Calculate equity curve
-        equity_curve = np.cumprod(1 + returns)
-        
-        # Calculate win rate
-        wins = np.sum(returns > 0)
-        total_trades = np.sum(returns != 0)
-        win_rate = wins / total_trades if total_trades > 0 else 0.0
-        
-        
-        return equity_curve, returns, win_rate
+        return returns
     
     @staticmethod
     def get_optimization_params():

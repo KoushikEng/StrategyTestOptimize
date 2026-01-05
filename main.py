@@ -85,22 +85,21 @@ if __name__ == '__main__':
     results_table.float_format = ".2"
     
     def process_result(symbol, retval):
-        equity_curve, returns, win_rate = retval
+        returns, equity_curve, win_rate, no_of_trades = retval
         
         net_profit = (equity_curve[-1] - 1) * 100 if len(equity_curve) > 0 else 0.0
         sharpe = calculate_sharpe(returns)
         sortino = calculate_sortino(returns)
         max_dd = calculate_max_drawdown(returns) * 100
-        total_trades = np.sum(returns != 0)
         
-        return [symbol, net_profit, win_rate * 100, sharpe, sortino, max_dd, total_trades]
+        return [symbol, net_profit, win_rate * 100, sharpe, sortino, max_dd, no_of_trades]
 
     final_results = []
     
     execution_results = []
     for data in data_list:
         try:
-            res = strategy_instance.run(data)
+            res = strategy_instance.process(data)
             execution_results.append(res)
         except Exception as e:
             print(f"Error running strategy on {data[0]}: {e}")
