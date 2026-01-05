@@ -5,8 +5,7 @@ class Base(ABC):
     """
     
 
-    @abstractmethod
-    def init(self):
+    def __init__(self):
         pass
     
     @abstractmethod
@@ -20,5 +19,16 @@ class Base(ABC):
             
         Returns:
             Tuple[np.ndarray, np.ndarray, float]: Tuple containing (returns, equity_curve, win_rate)
+        """
+        pass
+
+    @staticmethod
+    @abstractmethod
+    def get_optimization_params():
+        """
+        Get the optimization parameters for the strategy.
+        
+        Returns:
+            Dict[str, Tuple[float, float]]: Dictionary containing the optimization parameters.
         """
         pass

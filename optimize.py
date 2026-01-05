@@ -2,10 +2,10 @@ from typing import Dict, List, Tuple, Any
 import pygmo as pg
 import numpy as np
 import argparse
-import time
 from multiprocessing import cpu_count
 from Utilities import read_from_csv, DataTuple, get_strategy, get_interval
 from indicators.risk_metrics import calculate_sharpe, calculate_sortino, calculate_max_drawdown
+from strategies.Base import Base
 
 parser = argparse.ArgumentParser(description="Optimize the strategy")
 parser.add_argument('symbol', type=str, help="Symbol to optimize")
@@ -15,11 +15,15 @@ parser.add_argument('--gen', type=int, default=50, help="Generations")
 parser.add_argument('--interval', '-I', type=str, default='5', help='Interval (1, 5, 15, 1H, 1D, etc.)')
 args = parser.parse_args()
 
-def walk_forward_split(data: DataTuple, train_size=3375, test_size=375):
+def walk_forward_split(data: DataTuple, train_size=1500, test_size=200):
     """Yields train, test sets."""
-    for start in range(0, len(data[1]) - train_size - test_size + 1, test_size):
-        train = [data[0], *[np.array(d[start:start+train_size]) for d in data[1:]]]
-        test = [data[0], *[np.array(d[start+train_size:start+train_size+test_size]) for d in data[1:]]]
+    n = len(data[1])
+    end = n - (n % test_size)
+    for start in range(0, end, test_size):
+        train_end = start+train_size
+        test_end = train_end+test_size
+        train = [data[0], *[np.array(d[0:train_end]) for d in data[1:]]]
+        test = [data[0], *[np.array(d[train_end:test_end]) for d in data[1:]]]
         yield train, test
 
 def get_data_split(data: DataTuple, split=0.3):
@@ -28,9 +32,9 @@ def get_data_split(data: DataTuple, split=0.3):
     return [data[0], *[np.array(d[-start:]) for d in data[1:]]]
 
 class StrategyOptimizationProblem:
-    def __init__(self, data: DataTuple, strategy_class: Any, bounds: Tuple[List[float], List[float]], param_names: List[str]):
+    def __init__(self, data: DataTuple, strategy_class: Base, bounds: Tuple[List[float], List[float]], param_names: List[str]):
         self.data = data
-        self.strategy = strategy_class()
+        self.strategy: Base = strategy_class()
         self.bounds = bounds
         self.param_names = param_names
         self.n_obj = 1 # Single objective
@@ -86,11 +90,11 @@ def optimize_single_period(problem) -> Tuple[List[float], List[float]]:
 def walk_forward_optimize(data: DataTuple, strategy_class, bounds, param_names) -> List[Dict]:
     results = []
     total_len = len(data[1])
-    train_size = int(total_len * 0.6)
-    test_size = int(total_len * 0.15)
+    train_size = int(total_len * 0.4)
+    test_size = int(total_len * 0.1)
     
     if train_size < 100 or test_size < 20:
-        train_size = int(total_len * 0.7)
+        train_size = int(total_len * 0.6)
         test_size = int(total_len * 0.2)
         
     print(f"WFA: Train={train_size}, Test={test_size}, Algo=de1220")
@@ -134,6 +138,7 @@ if __name__ == "__main__":
     interval_enum = get_interval(args.interval)
     data_path = f"./data/{interval_enum.value}/"
     
+    # Read data first
     try:
         data = read_from_csv(SYMBOL, data_path)
     except Exception as e:
@@ -141,6 +146,7 @@ if __name__ == "__main__":
         # Try default path assumption from previous code if needed or just fail
         exit()
 
+    # Get strategy class
     strategy_module = get_strategy(args.strategy)
     StrategyClass = getattr(strategy_module, args.strategy)
     

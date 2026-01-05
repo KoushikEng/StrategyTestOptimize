@@ -60,8 +60,6 @@ def fast_numba_strategy(closes, fast_ma_period, slow_ma_period):
     return returns, entries, exits
 
 class SimpleMACross(Base):
-    def init(self):
-        pass
     
     def run(self, data: DataTuple, fast_ma=50, slow_ma=200, **kwargs):
         symbol, dates, times, opens, highs, lows, closes, volume = data
