@@ -16,9 +16,16 @@ parser.add_argument('--interval', '-I', type=str, default='5', help='Interval (1
 args = parser.parse_args()
 
 def walk_forward_split(data: DataTuple, train_size=1500, test_size=200):
-    """Yields train, test sets."""
+    """Yields train, test sets.
+    progressively increses the training set size and moves forward the test set.
+    
+    Args:
+        data (DataTuple): The data tuple.
+        train_size (int, optional): The size of the training set. Defaults to 1500.
+        test_size (int, optional): The size of the test set. Defaults to 200.
+    """
     n = len(data[1])
-    end = n - (n % test_size)
+    end = n - train_size - (n % test_size)
     for start in range(0, end, test_size):
         train_end = start+train_size
         test_end = train_end+test_size
@@ -66,7 +73,7 @@ class StrategyOptimizationProblem:
         if len(trades) < 2: # Too few trades
             return [1e6]
             
-        sharpe = calculate_sharpe(trades, risk_free_rate=0.0, scaling_factor=1.0) # Trade Sharpe
+        sharpe = calculate_sharpe(trades) # Trade Sharpe
         # Drawdown can be incorporated as penalty or constraint if needed, but for now just Sharpe
         
         return [-sharpe]
@@ -97,7 +104,7 @@ def walk_forward_optimize(data: DataTuple, strategy_class: Type[Base], bounds, p
     results = []
     total_len = len(data[1])
     train_size = int(total_len * 0.4)
-    test_size = int(total_len * 0.1)
+    test_size = int(total_len * 0.2)
     
     if train_size < 100 or test_size < 20:
         train_size = int(total_len * 0.6)
@@ -122,7 +129,7 @@ def walk_forward_optimize(data: DataTuple, strategy_class: Type[Base], bounds, p
                 # print(f"Skipping result: Too few trades ({len(trades)}). Params: {params}")
                 continue
                 
-            sharpe = calculate_sharpe(trades, risk_free_rate=0.0, scaling_factor=1.0)
+            sharpe = calculate_sharpe(trades)
             drawdown = calculate_max_drawdown(returns)
             
             res = {
