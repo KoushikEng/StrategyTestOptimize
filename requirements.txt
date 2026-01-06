@@ -3,5 +3,4 @@ numpy
 prettytable
 pygmo
 pytz
-tvdatafeed
 pandas
