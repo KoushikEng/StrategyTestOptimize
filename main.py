@@ -36,7 +36,7 @@ def process_result(symbol, retval):
     
     return [symbol, net_profit, win_rate * 100, sharpe, sortino, max_dd, no_of_trades]
 
-def run_backtest(symbols: list, strategy_name: str, interval: str = '5', download: bool = False, **kwargs) -> list:
+def run_backtest(symbols: list, strategy_name: str, interval: str = '5', download: bool = False, multiprocess: bool = False, **kwargs) -> list:
     """
     Run backtest on a list of symbols.
     
@@ -45,6 +45,7 @@ def run_backtest(symbols: list, strategy_name: str, interval: str = '5', downloa
         strategy_name (str): Name of the strategy class.
         interval (str, optional): Data interval. Defaults to '5'.
         download (bool, optional): Whether to download data. Defaults to False.
+        multiprocess (bool, optional): Whether to use multiprocessing. Defaults to False.
         **kwargs: Strategy parameters.
         
     Returns:
@@ -71,18 +72,32 @@ def run_backtest(symbols: list, strategy_name: str, interval: str = '5', downloa
     print(f"Loading data for {len(symbols)} symbols from {data_path}...")
     argss = [(s, data_path) for s in symbols]
     
-    # Use ThreadPool for IO bound reading
-    with ThreadPool(processes=min(5, len(symbols))) as pool:
-        data_list = pool.starmap(read_from_csv, argss)
+    if multiprocess:
+        # Use ThreadPool for IO bound reading
+        with ThreadPool(processes=min(5, len(symbols))) as pool:
+            data_list = pool.starmap(read_from_csv, argss)
+    else:
+        # Sequential execution to avoid Windows multiprocessing issues with local functions/pickling
+        data_list = [read_from_csv(*args) for args in argss]
     
     print(f"Running {strategy_name} on {len(symbols)} symbols...")
     
     execution_results = []
+    
     run_with_kwargs = partial(strategy_instance.process, **kwargs)
     
-    # Use Process Pool for CPU bound strategy execution
-    with Pool(processes=min(cpu_count(), len(symbols))) as pool:
-        execution_results = pool.map(run_with_kwargs, data_list)
+    if multiprocess:
+        # Use Process Pool for CPU bound strategy execution
+        with Pool(processes=min(cpu_count(), len(symbols))) as pool:
+            execution_results = pool.map(run_with_kwargs, data_list)
+    else:
+        for data in data_list:
+            try:
+                res = run_with_kwargs(data)
+                execution_results.append(res)
+            except Exception as e:
+                print(f"Error running strategy on {data[0]}: {e}")
+                execution_results.append((np.array([1.0]), np.array([0.0]), 0.0))
         
     final_results = []
     for i, (symbol, *_) in enumerate(data_list):
@@ -97,6 +112,7 @@ if __name__ == '__main__':
     parser.add_argument('--download', action='store_true')
     parser.add_argument('--strategy', '-S', type=str, help='Strategy to run')
     parser.add_argument('--interval', '-I', type=str, default='5', help='Interval (1, 5, 15, 1H, 1D, etc.)')
+    parser.add_argument('--multiprocess', action='store_true', help='Use multiprocessing')
     parser.add_argument('--kwargs', type=str, default='', help='Additional kwargs for strategy')
 
     args = parser.parse_args()
@@ -140,7 +156,7 @@ if __name__ == '__main__':
             else:
                 print(f"Invalid argument format: {arg}. Please use key:datatype=value")
 
-    results = run_backtest(symbols, args.strategy, args.interval, args.download, **kwargs)
+    results = run_backtest(symbols, args.strategy, args.interval, args.download, args.multiprocess, **kwargs)
     
     # Display results
     results_table = PrettyTable()
