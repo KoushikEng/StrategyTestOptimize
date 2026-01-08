@@ -7,22 +7,9 @@ from Utilities import read_from_csv, DataTuple, get_strategy, get_interval
 from indicators.risk_metrics import calculate_sharpe, calculate_sortino, calculate_max_drawdown
 from strategies.Base import Base
 
-parser = argparse.ArgumentParser(description="Optimize the strategy")
-parser.add_argument('symbol', type=str, help="Symbol to optimize")
-parser.add_argument('--strategy', '-S', type=str, required=True, help="Strategy to optimize")
-parser.add_argument('--pop', type=int, default=80, help="Population size per island")
-parser.add_argument('--gen', type=int, default=200, help="Generations")
-parser.add_argument('--interval', '-I', type=str, default='5', help='Interval (1, 5, 15, 1H, 1D, etc.)')
-args = parser.parse_args()
-
 def walk_forward_split(data: DataTuple, train_size=1500, test_size=200):
     """Yields train, test sets.
     progressively increses the training set size and moves forward the test set.
-    
-    Args:
-        data (DataTuple): The data tuple.
-        train_size (int, optional): The size of the training set. Defaults to 1500.
-        test_size (int, optional): The size of the test set. Defaults to 200.
     """
     n = len(data[1])
     end = n - train_size - (n % test_size)
@@ -83,23 +70,13 @@ class StrategyOptimizationProblem:
         drawdown = calculate_max_drawdown(returns) # Max DD from equity curve perspective (using full returns)
         total_return = np.sum(returns)
         
-        # Robust Score Calculation:
-        # We want to Maximize: Sortino * (1 - DD) ... wait DD is usually positive 0 to 1 in this impl?
-        # Let's check calculate_max_drawdown in risk_metrics. It returns positive or negative?
-        # Usually DD is negative value like -0.20. Let's assume it returns negative value based on inspection or verify.
-        # Verified file: calculate_max_drawdown returns `np.min(drawdown)` which would be negative (e.g., -0.20).
-        # So we want to maximize (1 + MaxDD) where MaxDD is -ve.
-        # Score = Sortino * (1 + MaxDD) * log(1 + abs(TotalReturn))
+        # Robust Score Calculation
         
         # Check for NaN/Inf
         if np.isnan(sharpe) or np.isnan(sortino):
             return [1e6]
 
         # Composite score
-        # Using Sortino as base because it penalizes bad volatility.
-        # Penalty for DD: If DD is -50%, (1 + -0.5) = 0.5 multiplier.
-        # Boost for Return: log(1 + abs(ret)) for scaling.
-        
         score = calculate_robust_score(sortino, drawdown, total_return)
         
         # Invert for minimization
@@ -111,23 +88,23 @@ class StrategyOptimizationProblem:
     def get_nobj(self) -> int:
         return self.n_obj
 
-def optimize_single_period(problem) -> Tuple[List[float], List[float]]:
+def optimize_single_period(problem, pop=40, gen=50) -> Tuple[List[float], List[float]]:
     # DE1220 Algorithm
-    algo = pg.algorithm(pg.de1220(gen=args.gen))
+    algo = pg.algorithm(pg.de1220(gen=gen))
     
     # Island Model (Parallelism)
     island_count = cpu_count()
     prob = pg.problem(problem)
     
     # Create Archipelago
-    archi = pg.archipelago(n=island_count, algo=algo, prob=prob, pop_size=args.pop)
+    archi = pg.archipelago(n=island_count, algo=algo, prob=prob, pop_size=pop)
     archi.evolve()
     archi.wait_check()
     
     # Single objective: Champions are the best found from each island
     return archi.get_champions_x(), archi.get_champions_f()
 
-def walk_forward_optimize(data: DataTuple, strategy_class: Type[Base], bounds, param_names) -> List[Dict]:
+def walk_forward_optimize(data: DataTuple, strategy_class: Type[Base], bounds, param_names, pop=40, gen=50) -> List[Dict]:
     results = []
     total_len = len(data[1])
     train_size = int(total_len * 0.4)
@@ -141,7 +118,7 @@ def walk_forward_optimize(data: DataTuple, strategy_class: Type[Base], bounds, p
 
     for train_data, test_data in walk_forward_split(data, train_size, test_size):
         problem = StrategyOptimizationProblem(train_data, strategy_class, bounds, param_names)
-        pareto_x, _ = optimize_single_period(problem)
+        pareto_x, _ = optimize_single_period(problem, pop=pop, gen=gen)
         
         # Validate on Test
         test_problem = StrategyOptimizationProblem(test_data, strategy_class, bounds, param_names)
@@ -152,8 +129,6 @@ def walk_forward_optimize(data: DataTuple, strategy_class: Type[Base], bounds, p
             trades = returns[returns != 0]
             
             if len(trades) < 2:
-                # print(f"Skipping result: Too few trades ({len(trades)})")
-                # print(f"Skipping result: Too few trades ({len(trades)}). Params: {params}")
                 continue
                 
             sharpe = calculate_sharpe(trades)
@@ -162,7 +137,6 @@ def walk_forward_optimize(data: DataTuple, strategy_class: Type[Base], bounds, p
             total_return = np.sum(returns)
             
             # Recalculate robust score for sorting
-            # (Matches fitness logic approx, but we sort explicitly later)
             robust_score = calculate_robust_score(sortino, drawdown, total_return)
 
             res = {
@@ -178,63 +152,94 @@ def walk_forward_optimize(data: DataTuple, strategy_class: Type[Base], bounds, p
             
     return results
 
-if __name__ == "__main__":
-    if not args.strategy:
-        print("Strategy is required.")
-        exit()
+def run_optimization(symbol: str, strategy_name: str, interval: str = '5', pop: int = 80, gen: int = 200) -> List[Dict]:
+    """
+    Run optimization for a strategy on a specific symbol.
+    
+    Args:
+        symbol (str): Symbol to optimize.
+        strategy_name (str): Name of the strategy class.
+        interval (str, optional): Data interval. Defaults to '5'.
+        pop (int, optional): Population size. Defaults to 80.
+        gen (int, optional): Generations. Defaults to 200.
         
-    SYMBOL = args.symbol.upper()
-    interval_enum = get_interval(args.interval)
+    Returns:
+        List[Dict]: List of optimization results from WFA.
+    """
+    
+    SYMBOL = symbol.upper()
+    from Utilities import get_interval # import here to avoid circular or early import issues if any
+    interval_enum = get_interval(interval)
     data_path = f"./data/{interval_enum.value}/"
     
-    # Read data first
+    # Read data
     try:
         data = read_from_csv(SYMBOL, data_path)
     except Exception as e:
         print(f"Error reading data for {SYMBOL} from {data_path}: {e}")
-        # Try default path assumption from previous code if needed or just fail
-        exit()
+        return []
 
     # Get strategy class
-    strategy_module = get_strategy(args.strategy)
-    StrategyClass: Type[Base] = getattr(strategy_module, args.strategy)
+    try:
+        strategy_module = get_strategy(strategy_name)
+        StrategyClass: Type[Base] = getattr(strategy_module, strategy_name)
+    except (ValueError, AttributeError) as e:
+        print(f"Error loading strategy '{strategy_name}': {e}")
+        return []
     
-    # Check if strategy has optimization definition
-    if hasattr(StrategyClass, 'get_optimization_params'):
-        # Expected format: {"param_name": (min, max), ...}
-        opt_params = StrategyClass.get_optimization_params()
-        param_names = list(opt_params.keys())
-        lower_bounds = [v[0] for v in opt_params.values()]
-        upper_bounds = [v[1] for v in opt_params.values()]
-        bounds = (lower_bounds, upper_bounds)
-    else:
-        print(f"Strategy {args.strategy} does not define 'get_optimization_params'.")
-        print("Please add a static method 'get_optimization_params' returning dict {'param': (min, max)}")
-        exit()
-
+    bounds = StrategyClass.get_optimization_params()
+    param_names = list(bounds.keys())
+    # Convert bounds dict to tuple of lists
+    lower_bounds = [b[0] for b in bounds.values()]
+    upper_bounds = [b[1] for b in bounds.values()]
+    bounds_tuple = (lower_bounds, upper_bounds)
+    
     print("Running Walk-Forward Optimization...")
-    wfa_results = walk_forward_optimize(data, StrategyClass, bounds, param_names)
+    wfa_results = walk_forward_optimize(data, StrategyClass, bounds_tuple, param_names, pop=pop, gen=gen)
+    
+    return wfa_results
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Optimize the strategy")
+    parser.add_argument('symbol', type=str, help="Symbol to optimize")
+    parser.add_argument('--strategy', '-S', type=str, required=True, help="Strategy to optimize")
+    parser.add_argument('--pop', type=int, default=80, help="Population size per island")
+    parser.add_argument('--gen', type=int, default=200, help="Generations")
+    parser.add_argument('--interval', '-I', type=str, default='5', help='Interval (1, 5, 15, 1H, 1D, etc.)')
+    args = parser.parse_args()
+
+    wfa_results = run_optimization(
+        args.symbol, 
+        args.strategy, 
+        args.interval, 
+        args.pop, 
+        args.gen
+    )
     
     if not wfa_results:
         print("No results generated.")
         exit()
-
-    # Selection: Best Robust Score
-    best_result = sorted(wfa_results, key=lambda x: x['robust_score'], reverse=True)[0]
+        
+    # Process results to find best robust params
+    # Sort by robust_score (descending)
+    wfa_results.sort(key=lambda x: x['robust_score'], reverse=True)
     
+    best_result = wfa_results[0]
+    best_params = best_result['params']
+    
+    strategy_module = get_strategy(args.strategy)
+    StrategyClass = getattr(strategy_module, args.strategy)
+    param_names = list(StrategyClass.get_optimization_params().keys())
+    best_params_dict = dict(zip(param_names, best_params))
+
     print("\nBest Robust Parameters Found:")
     print("-" * 30)
-    best_params_dict = dict(zip(param_names, best_result['params']))
     print(best_params_dict)
-    print(f"Robust Score: {best_result['robust_score']:.4f}")
     print(f"OOS Sharpe: {best_result['oos_sharpe']:.2f}")
-    print(f"OOS Sortino: {best_result['oos_sortino']:.2f}")
-    print(f"Total Return: {best_result['total_return']*100:.2f}%")
+    if 'oos_sortino' in best_result:
+        print(f"OOS Sortino: {best_result['oos_sortino']:.2f}")
+    if 'total_return' in best_result:
+        print(f"Total Return: {best_result['total_return']*100:.2f}%")
+        
     print(f"Win Rate: {best_result['win_pct']*100:.2f}%")
     print(f"Max DD: {best_result['drawdown']*100:.2f}%")
-    
-    # print("\nCmd to run:")
-    # param_str = " ".join([f"--{k} {v}" for k,v in best_params_dict.items()]) # This assumes main.py takes args exactly like this, which currently it doesn't support generic args well
-    # Current main.py doesn't accept dynamic args easily via CLI yet without work. 
-    # But we print the dict for user to use.
-
