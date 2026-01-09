@@ -1,12 +1,15 @@
 """
-Research Agent Master Orchestrator
+Research Agent Master Orchestrator (LangGraph Edition)
 
 The closed-loop system that connects:
 1. Translator (Text -> Spec)
 2. Compiler (Spec -> Python)
 3. Backtest Engine (Test)
 4. Reviewer (Validate)
-5. Optimizer (Tune)
+5. Repair Agent (Fix)
+6. Optimizer (Tune)
+
+Powered by LangGraph for cyclic orchestration and state management.
 """
 
 import argparse
@@ -17,14 +20,10 @@ from typing import Optional
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from research_agent.schema import StrategySpec
-from research_agent.translator import translate
-from research_agent.compiler import compile_strategy, save_strategy
-from research_agent.reviewer import review_strategy, format_review
-from research_agent.optimizer import optimize_strategy, format_optimization_result
-from main import run_backtest
-from Utilities import get_strategy
-
+from research_agent.graph import build_graph
+from research_agent.state import AgentState
+from research_agent.reviewer import format_review
+from research_agent.optimizer import format_optimization_result
 
 def research_loop(
     description: str,
@@ -36,163 +35,81 @@ def research_loop(
     verbose: bool = True
 ) -> dict:
     """
-    Execute the full research loop.
-    
-    Args:
-        description: Natural language strategy description
-        symbol: Symbol to test on
-        interval: Data interval
-        provider: LLM provider ("google" or "openai")
-        download: Whether to download data
-        optimize: Whether to run optimization if approved
-        verbose: Print progress
-        
-    Returns:
-        dict: Results of the research loop
+    Execute the full research loop using LangGraph.
     """
     
-    result = {
-        "success": False,
-        "spec": None,
+    if verbose:
+        print("🚀 Starting Research Agent (LangGraph)...")
+        print(f"Goal: {description[:100]}...")
+        print("-" * 50)
+    
+    # Initialize State
+    initial_state: AgentState = {
+        "user_request": description,
+        "symbol": symbol,
+        "interval": interval,
+        "download": download,
+        "strategy_spec": None,
         "strategy_path": None,
         "backtest_results": None,
-        "review": None,
-        "optimization": None,
-        "error": None
+        "review_result": None,
+        "error": None,
+        "iterations": 0
     }
     
-    # === STEP 1: Translate ===
-    if verbose:
-        print("=" * 60)
-        print("🧠 STEP 1: Translation (Text -> Spec)")
-        print("=" * 60)
-        print(f"Input: {description[:100]}...")
-        print()
+    # Build Graph
+    app = build_graph()
     
+    # Invoke Graph
+    # This runs the entire loop including repairs
     try:
-        spec = translate(description, provider=provider)
-        result["spec"] = spec.model_dump()
-        if verbose:
-            print(f"✅ Generated Spec: {spec.name}")
-            print(f"   Indicators: {[i.name for i in spec.indicators]}")
-            print(f"   Entry: {len(spec.entry_conditions)} conditions")
-            print(f"   Exit: {len(spec.exit_conditions)} conditions")
-            print()
+        final_state = app.invoke(initial_state)
     except Exception as e:
-        result["error"] = f"Translation failed: {e}"
         if verbose:
-            print(f"❌ Translation failed: {e}")
-        return result
+            print(f"❌ Graph execution failed: {e}")
+        return {"error": str(e), "success": False}
     
-    # === STEP 2: Compile ===
-    if verbose:
-        print("=" * 60)
-        print("🔧 STEP 2: Compilation (Spec -> Python)")
-        print("=" * 60)
-    
-    try:
-        strategy_path = save_strategy(spec, output_dir="strategies")
-        result["strategy_path"] = strategy_path
-        if verbose:
-            print(f"✅ Compiled to: {strategy_path}")
-            print()
-    except Exception as e:
-        result["error"] = f"Compilation failed: {e}"
-        if verbose:
-            print(f"❌ Compilation failed: {e}")
-        return result
-    
-    # === STEP 3: Backtest ===
-    if verbose:
-        print("=" * 60)
-        print("📊 STEP 3: Backtest")
-        print("=" * 60)
-    
-    try:
-        backtest_results = run_backtest(
-            symbols=[symbol],
-            strategy_name=spec.name,
-            interval=interval,
-            download=download
-        )
-        result["backtest_results"] = backtest_results
-        
-        if verbose and backtest_results:
-            row = backtest_results[0]
-            print(f"Symbol: {row[0]}")
-            print(f"Net Profit: {row[1]:.2f}%")
-            print(f"Win Rate: {row[2]:.2f}%")
-            print(f"Sharpe: {row[3]:.2f}")
-            print(f"Max DD: {row[5]:.2f}%")
-            print(f"Trades: {row[6]}")
-            print()
-    except Exception as e:
-        result["error"] = f"Backtest failed: {e}"
-        if verbose:
-            print(f"❌ Backtest failed: {e}")
-        return result
-    
-    # === STEP 4: Review ===
-    if verbose:
-        print("=" * 60)
-        print("🔍 STEP 4: Review (Sanity Check)")
-        print("=" * 60)
-    
-    review = review_strategy(backtest_results)
-    result["review"] = {
-        "passed": review.passed,
-        "score": review.score,
-        "issues": review.issues,
-        "warnings": review.warnings
+    # Process Final State
+    result = {
+        "success": False,
+        "spec": final_state.get("strategy_spec"),
+        "strategy_path": final_state.get("strategy_path"),
+        "backtest_results": final_state.get("backtest_results"),
+        "review": final_state.get("review_result"),
+        "optimization": final_state.get("optimizer_result"),
+        "error": final_state.get("error")
     }
     
-    if verbose:
-        print(format_review(review))
-        print()
+    # Check if we succeeded
+    # Success means: No error, passed review (if reviewed), and optimization done (if requested)
+    # Actually simpler: if final node was optimizer (and it ran), or if we ended at reviewer/backtester but cleanly.
+    # If error is present, we failed.
     
-    if not review.passed:
-        result["error"] = "Strategy rejected by reviewer"
+    if final_state.get("error"):
         if verbose:
-            print("🛑 Strategy DID NOT PASS review. Stopping here.")
-        return result
-    
-    result["success"] = True
-    
-    # === STEP 5: Optimize (Optional) ===
-    if optimize and review.passed:
-        if verbose:
-            print("=" * 60)
-            print("⚡ STEP 5: Optimization")
-            print("=" * 60)
+           print(f"\n❌ FAILED: {final_state['error']}")
+    else:
+        result["success"] = True
         
-        try:
-            opt_result = optimize_strategy(
-                symbol=symbol,
-                strategy_name=spec.name,
-                interval=interval,
-                pop=20,
-                gen=10
-            )
-            result["optimization"] = opt_result
+        if verbose:
+            print("\n✅ Research Loop Complete!")
+            if result['strategy_path']:
+                print(f"Strategy: {result['spec'].get('name')}")
+                print(f"Path: {result['strategy_path']}")
             
-            if verbose:
-                param_names = list(spec.optimization_params.keys())
-                print(format_optimization_result(opt_result, param_names))
-        except Exception as e:
-            if verbose:
-                print(f"⚠️ Optimization failed: {e}")
-    
-    # === COMPLETE ===
-    if verbose:
-        print()
-        print("=" * 60)
-        print("✅ Research Loop Complete!")
-        print("=" * 60)
-        print(f"Strategy: {spec.name}")
-        print(f"Location: {strategy_path}")
-        if result.get("optimization", {}).get("success"):
-            print("Optimization: Complete")
-    
+            if result['review']:
+                print("\nREVIEW RESULT:")
+                # Construct temporary review obj for formatting
+                from research_agent.reviewer import ReviewResult
+                r_dict = result['review']
+                rev_obj = ReviewResult(**r_dict)
+                print(format_review(rev_obj))
+                
+            if result['optimization']:
+                print("\nOPTIMIZATION RESULT:")
+                param_names = list(result['spec'].get('optimization_params', {}).keys())
+                print(format_optimization_result(result['optimization'], param_names))
+
     return result
 
 

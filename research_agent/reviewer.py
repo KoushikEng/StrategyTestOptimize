@@ -9,7 +9,7 @@ This agent REJECTS strategies that show signs of:
 - Unrealistic performance
 """
 
-from typing import Dict, List, Tuple, Optional
+from typing import List
 from dataclasses import dataclass
 
 

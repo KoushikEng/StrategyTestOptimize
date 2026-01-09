@@ -5,3 +5,4 @@ results
 *.code-workspace
 data/
 *txt
+.env
