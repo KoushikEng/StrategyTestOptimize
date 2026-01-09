@@ -99,6 +99,38 @@ Example:
 This agent **does NOT write code**.
 It produces **intent**, not implementation.
 
+#### Concrete example (minimal, not fancy)
+
+##### Text
+
+> Buy when fast EMA crosses slow EMA and RSI < 30.
+> Exit at RSI > 60 or 1.5 ATR stop.
+
+##### Spec
+
+```json
+{
+  "name": "ema_rsi_mean_reversion",
+  "timeframe": "5m",
+  "indicators": {
+    "ema_fast": { "type": "EMA", "length": 9 },
+    "ema_slow": { "type": "EMA", "length": 21 },
+    "rsi": { "type": "RSI", "length": 14 },
+    "atr": { "type": "ATR", "length": 14 }
+  },
+  "entry": [
+    "crossover(ema_fast, ema_slow)",
+    "rsi < 30"
+  ],
+  "exit": [
+    "rsi > 60"
+  ],
+  "risk": {
+    "stoploss": "1.5 * atr"
+  }
+}
+```
+
 ---
 
 ### 2. Strategy Compiler Agent
@@ -179,7 +211,7 @@ This agent **never edits logic**, only parameters.
 
 ## Fitness function (don’t screw this up)
 
-You already sensed this earlier, so let me be blunt:
+Let me be blunt:
 
 ### Sharpe is trash for what you want
 
