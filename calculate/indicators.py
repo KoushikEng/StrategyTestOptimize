@@ -1,10 +1,51 @@
+"""
+This module provides a collection of technical indicators implemented using Numba for efficient computation.
+"""
+
 import numpy as np
 from numba import njit
 
+
+@njit
+def calculate_sma(data: np.ndarray, period: int) -> np.ndarray:
+    """
+    Calculate the Simple Moving Average (SMA) for a given array of data.
+    
+    Args:
+        data (np.ndarray): Array of data points.
+        period (int): Period for SMA calculation.
+    
+    Returns:
+        np.ndarray: Array of SMA values.
+    """
+    n = data.shape[0]
+    sma = np.zeros_like(data)
+
+    window_sum = 0.0
+    for i in range(period):
+        window_sum += data[i]
+    sma[period - 1] = window_sum / period
+
+    for i in range(period, n):
+        window_sum += data[i] - data[i - period]
+        sma[i] = window_sum / period
+
+    return sma
+
 @njit
 def calculate_ema(data: np.ndarray, period: int) -> np.ndarray:
+    """
+    Calculate the Exponential Moving Average (EMA) for a given array of data.
+    
+    Args:
+        data (np.ndarray): Array of data points.
+        period (int): Period for EMA calculation.
+    
+    Returns:
+        np.ndarray: Array of EMA values.
+    """
     alpha = 2 / (period + 1)
-    ema = np.empty_like(data)
+    ema = np.zeros_like(data)
     ema[0] = data[0]  # seed with first price
     
     for i in range(1, data.shape[0]):
@@ -13,16 +54,40 @@ def calculate_ema(data: np.ndarray, period: int) -> np.ndarray:
     return ema
 
 @njit
-def calculate_macd_histogram(prices, fast=12, slow=26, signal=9):
+def calculate_macd(prices, fast=12, slow=26, signal=9):
+    """
+    Calculate the MACD (Moving Average Convergence Divergence) for a given array of prices.
+    
+    Args:
+        prices (np.ndarray): Array of prices.
+        fast (int): Fast EMA period (default is 12).
+        slow (int): Slow EMA period (default is 26).
+        signal (int): Signal EMA period (default is 9).
+    
+    Returns:
+        tuple: Tuple containing MACD line, Signal line, and Histogram.
+    """
     ema_fast = calculate_ema(prices, fast)
     ema_slow = calculate_ema(prices, slow)
     macd_line = ema_fast - ema_slow
     signal_line = calculate_ema(macd_line, signal)
-    return macd_line - signal_line  # Histogram
+    return macd_line, signal_line, macd_line - signal_line
 
 @njit
 def calculate_atr(high: np.ndarray, low: np.ndarray, close: np.ndarray, period: int=14) -> np.ndarray:
-    atr = np.empty_like(close)
+    """
+    Calculate the Average True Range (ATR) for a given array of prices.
+    
+    Args:
+        high (np.ndarray): Array of high prices.
+        low (np.ndarray): Array of low prices.
+        close (np.ndarray): Array of close prices.
+        period (int): Period for ATR calculation (default is 14).
+    
+    Returns:
+        np.ndarray: Array of ATR values.
+    """
+    atr = np.zeros_like(close)
     tr = np.empty_like(close)
     
     tr[0] = high[0] - low[0]
@@ -33,7 +98,6 @@ def calculate_atr(high: np.ndarray, low: np.ndarray, close: np.ndarray, period: 
         tr[i] = max(h_l, h_pc, l_pc)
 
     # First ATR point is SMA of first `period` TRs
-    atr[:period] = np.nan
     atr[period - 1] = np.mean(tr[:period])
     
     # Rest: EMA-style smoothing
@@ -44,7 +108,20 @@ def calculate_atr(high: np.ndarray, low: np.ndarray, close: np.ndarray, period: 
     return atr
 
 @njit
-def calculate_supertrend(high, low, close, period=10, multiplier=3.0):
+def calculate_supertrend(high: np.ndarray, low: np.ndarray, close: np.ndarray, period: int=10, multiplier: float=3.0) -> np.ndarray:
+    """
+    Calculate the Supertrend for a given array of prices.
+    
+    Args:
+        high (np.ndarray): Array of high prices.
+        low (np.ndarray): Array of low prices.
+        close (np.ndarray): Array of close prices.
+        period (int): Period for Supertrend calculation (default is 10).
+        multiplier (float): Multiplier for ATR (default is 3.0).
+    
+    Returns:
+        np.ndarray: Array of Supertrend values.
+    """
     n = len(close)
     
     # --- ATR Calculation ---
@@ -53,13 +130,12 @@ def calculate_supertrend(high, low, close, period=10, multiplier=3.0):
     # --- Supertrend Calculation ---
     upperband = np.empty(n)
     lowerband = np.empty(n)
-    trend = np.empty(n, dtype=np.int8)
+    trend = np.ones(n, dtype=np.int8)  # Default to uptrend
 
     for i in range(n):
         upperband[i] = ((high[i] + low[i]) / 2) + multiplier * atr[i]
         lowerband[i] = ((high[i] + low[i]) / 2) - multiplier * atr[i]
 
-    trend[:] = 1  # Default to uptrend
     final_upperband = upperband.copy()
     final_lowerband = lowerband.copy()
 
@@ -84,6 +160,16 @@ def calculate_supertrend(high, low, close, period=10, multiplier=3.0):
 
 @njit
 def calculate_rsi(prices: np.ndarray, period: int = 14) -> np.ndarray:
+    """
+    Calculate the Relative Strength Index (RSI) for a given array of prices.
+    
+    Args:
+        prices (np.ndarray): Array of prices.
+        period (int): Period for RSI calculation (default is 14).
+    
+    Returns:
+        np.ndarray: Array of RSI values.
+    """
     deltas = np.diff(prices)
     gains = np.maximum(deltas, 0)
     losses = np.maximum(-deltas, 0)
@@ -102,7 +188,19 @@ def calculate_rsi(prices: np.ndarray, period: int = 14) -> np.ndarray:
     return 100 - (100 / (1 + rs))
 
 @njit
-def calculate_adx(high, low, close, period=14):
+def calculate_adx(high: np.ndarray, low: np.ndarray, close: np.ndarray, period: int = 14) -> np.ndarray:
+    """
+    Calculate the Average Directional Index (ADX) for a given array of prices.
+    
+    Args:
+        high (np.ndarray): Array of high prices.
+        low (np.ndarray): Array of low prices.
+        close (np.ndarray): Array of close prices.
+        period (int): Period for ADX calculation (default is 14).
+    
+    Returns:
+        tuple: Tuple containing ADX values, plus DI, and minus DI.
+    """
     n = len(close)
     plus_dm = np.zeros(n)
     minus_dm = np.zeros(n)
@@ -150,10 +248,22 @@ def calculate_adx(high, low, close, period=14):
     for i in range(period * 2 + 1, n):
         adx[i] = ((adx[i - 1] * (period - 1)) + dx[i]) / period
 
-    return adx  # ADX values: higher = stronger trend
+    return adx, plus_di, minus_di  # ADX values: higher = stronger trend
 
 @njit
 def calculate_vwap(high, low, close, volume):
+    """
+    Calculate the Volume Weighted Average Price (VWAP) for a given array of prices.
+    
+    Args:
+        high (np.ndarray): Array of high prices.
+        low (np.ndarray): Array of low prices.
+        close (np.ndarray): Array of closing prices.
+        volume (np.ndarray): Array of volumes.
+    
+    Returns:
+        np.ndarray: Array of VWAP values.
+    """
     n = len(close)
     vwap = np.empty(n)
     cumulative_vp = 0.0
@@ -168,24 +278,7 @@ def calculate_vwap(high, low, close, volume):
     return vwap
 
 @njit
-def calculate_sma(data: np.ndarray, period: int) -> np.ndarray:
-    n = data.shape[0]
-    sma = np.empty(n)
-    sma[:period-1] = np.nan
-
-    window_sum = 0.0
-    for i in range(period):
-        window_sum += data[i]
-    sma[period - 1] = window_sum / period
-
-    for i in range(period, n):
-        window_sum += data[i] - data[i - period]
-        sma[i] = window_sum / period
-
-    return sma
-
-@njit
-def calculate_ema_slope_simple(ema_values: np.ndarray, lookback: int = 10) -> np.ndarray:
+def _calculate_ema_slope_simple(ema_values: np.ndarray, lookback: int = 10) -> np.ndarray:
     n = len(ema_values)
     slopes = np.empty(n)
     
@@ -198,7 +291,7 @@ def calculate_ema_slope_simple(ema_values: np.ndarray, lookback: int = 10) -> np
     return slopes
 
 @njit
-def calculate_ema_slope_linreg(ema_values: np.ndarray, lookback: int = 10) -> np.ndarray:
+def _calculate_ema_slope_linreg(ema_values: np.ndarray, lookback: int = 10) -> np.ndarray:
     n = len(ema_values)
     slopes = np.empty(n)
     x = np.arange(lookback)
@@ -220,34 +313,49 @@ def calculate_ema_slope_linreg(ema_values: np.ndarray, lookback: int = 10) -> np
 
 @njit
 def calculate_ema_slope(ema_values: np.ndarray, lookback: int=10, method: str='simple') -> np.ndarray:
+    """
+    Calculate the slope of an array of EMA values.
+    
+    Args:
+        ema_values (np.ndarray): Array of EMA values.
+        lookback (int): Number of periods to consider for slope calculation (default is 10).
+        method (str): Method for slope calculation ('simple' or 'linreg').
+    
+    Returns:
+        np.ndarray: Array of slope values.
+    """
     match method:
         case 'simple':
-            return calculate_ema_slope_simple(ema_values, lookback)
+            return _calculate_ema_slope_simple(ema_values, lookback)
         case 'linreg':
-            return calculate_ema_slope_linreg(ema_values, lookback)
+            return _calculate_ema_slope_linreg(ema_values, lookback)
         case _:
             raise ValueError("Invalid method. Use 'simple' or 'linreg'.")
 
 @njit
-def daily_rolling_median_atr(atr: np.ndarray, candles_per_day: int = 75, window_days: int = 30) -> np.ndarray:
-    n_candles = len(atr)
-    n_days = n_candles // candles_per_day
-    median_atr_per_day = np.full(n_days, np.nan)
+def _calculate_rolling_std(data: np.ndarray, window: int) -> np.ndarray:
+    result = np.full(len(data), np.nan, dtype=float)
+    for i in range(window-1, len(data)):
+        window_data = data[i-window+1:i+1]
+        result[i] = np.std(window_data)
+    return result
 
-    for i in range(window_days, n_days):
-        start_idx = (i - window_days) * candles_per_day
-        end_idx = i * candles_per_day
-        window = atr[start_idx:end_idx]
-        median_atr_per_day[i] = np.nanmedian(window)
-
-    # Broadcast per-day median ATR back to per-candle resolution
-    full_median_array = np.empty(n_candles)
-    for i in range(n_days):
-        day_start = i * candles_per_day
-        day_end = day_start + candles_per_day
-        val = median_atr_per_day[i] if i < len(median_atr_per_day) else np.nan
-        for j in range(day_start, min(day_end, n_candles)):
-            full_median_array[j] = val
-
-    return full_median_array
-
+@njit
+def calculate_bollinger_bands(data: np.ndarray, window: int, num_std: float = 2.0) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """
+    Calculate the Bollinger Bands for a given array of prices.
+    
+    Args:
+        data (np.ndarray): Array of prices.
+        window (int): Number of periods to consider for Bollinger Bands calculation (default is 20).
+        num_std (float): Number of standard deviations to use for Bollinger Bands calculation (default is 2.0).
+    
+    Returns:
+        tuple: Tuple containing middle band, upper band, and lower band as numpy arrays.
+    """
+    middle_band = calculate_sma(data, window)
+    std_dev = _calculate_rolling_std(data, window)
+    upper_band = middle_band + (num_std * std_dev)
+    lower_band = middle_band - (num_std * std_dev)
+    
+    return middle_band, upper_band, lower_band

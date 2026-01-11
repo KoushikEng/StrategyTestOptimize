@@ -12,7 +12,7 @@ from prettytable import PrettyTable
 import math
 import argparse
 import numpy as np
-from indicators.risk_metrics import calculate_sharpe, calculate_sortino, calculate_max_drawdown
+from calculate.risk_metrics import calculate_sharpe, calculate_sortino, calculate_max_drawdown
 from strategies.Base import Base
 from functools import partial
 
