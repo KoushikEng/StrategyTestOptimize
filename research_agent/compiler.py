@@ -6,8 +6,8 @@ This is a DETERMINISTIC, SANDBOXED component - no LLM involvement.
 """
 
 from research_agent.schema import StrategySpec, Indicator, IndicatorType
-from typing import Dict, Any
-import textwrap
+from typing import Dict
+from research_agent.tools import write_file
 
 
 # Indicator code generators
@@ -235,8 +235,7 @@ def save_strategy(spec: StrategySpec, output_dir: str = "strategies") -> str:
     filename = f"{spec.name}.py"
     filepath = os.path.join(output_dir, filename)
     
-    with open(filepath, "w") as f:
-        f.write(code)
+    write_file(filepath, code)
     
     return filepath
 

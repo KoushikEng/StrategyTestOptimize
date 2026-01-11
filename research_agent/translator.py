@@ -9,8 +9,8 @@ import os
 from typing import Optional
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
-from langchain_core.pydantic_v1 import BaseModel, Field
 from research_agent.schema import StrategySpec
+from research_agent.tools import write_file
 
 # Define the Pydantic wrapper for LangChain parser if needed, 
 # or just use the existing StrategySpec directly if compatible.
@@ -55,7 +55,7 @@ def get_llm(provider: str, api_key: Optional[str] = None):
     elif provider == "google":
         from langchain_google_genai import ChatGoogleGenerativeAI
         return ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             temperature=0.2,
             api_key=api_key or os.environ.get("GOOGLE_API_KEY")
         )
@@ -88,6 +88,12 @@ def translate(description: str, provider: str = "google", api_key: Optional[str]
     except Exception as e:
         # Fallback or specific error handling
         raise ValueError(f"Translation failed: {str(e)}")
+    
+def save_spec(spec: StrategySpec) -> int:
+    """
+    Save the strategy spec to a file.
+    """
+    return write_file(f"research_agent/runs/specs/{spec.name}.json", spec.model_dump_json(indent=2))
 
 
 if __name__ == "__main__":

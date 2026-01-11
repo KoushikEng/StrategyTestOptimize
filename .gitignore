@@ -6,3 +6,7 @@ results
 data/
 *txt
 .env
+
+# Ignore all strategies except Base.py
+strategies/
+!strategies/Base.py

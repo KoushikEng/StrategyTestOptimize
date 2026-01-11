@@ -15,7 +15,9 @@ Powered by LangGraph for cyclic orchestration and state management.
 import argparse
 import os
 import sys
-from typing import Optional
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -136,7 +138,10 @@ def main():
             lines = []
             while True:
                 line = input()
-                lines.append(line)
+                if line.strip() == "q":
+                    break
+                else:
+                    lines.append(line)
         except EOFError:
             pass
         

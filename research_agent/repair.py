@@ -39,7 +39,7 @@ def get_llm(provider: str, api_key: Optional[str] = None):
     elif provider == "google":
         from langchain_google_genai import ChatGoogleGenerativeAI
         return ChatGoogleGenerativeAI(
-            model="gemini-2.0-flash",
+            model="gemini-2.5-flash",
             temperature=0.2,
             api_key=api_key or os.environ.get("GOOGLE_API_KEY")
         )

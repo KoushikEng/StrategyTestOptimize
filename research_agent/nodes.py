@@ -5,14 +5,14 @@ Wrappers around core logic components to function as nodes in the LangGraph.
 """
 
 from research_agent.state import AgentState
-from research_agent.translator import translate
+from research_agent.translator import translate, save_spec
 from research_agent.compiler import save_strategy
 from research_agent.reviewer import review_strategy
 from research_agent.repair import repair_spec
 from research_agent.optimizer import optimize_strategy
 from research_agent.schema import StrategySpec
 from main import run_backtest
-import os
+
 
 MAX_ITERATIONS = 3
 
@@ -22,14 +22,18 @@ def translator_node(state: AgentState):
     try:
         # Default to google for now, or pick from args if we stored it
         spec = translate(state["user_request"], provider="google")
+        save_spec(spec)
         return {"strategy_spec": spec.model_dump(), "error": None}
     except Exception as e:
+        print(f"Translation failed: {e}")
+        exit(1)
         return {"error": f"Translation error: {str(e)}"}
 
 def compiler_node(state: AgentState):
     """Compile spec to Python strategy."""
     print("--- COMPILER ---")
     spec_data = state.get("strategy_spec")
+    print("spec_data", spec_data)
     if not spec_data:
         return {"error": "No strategy spec found"}
     
