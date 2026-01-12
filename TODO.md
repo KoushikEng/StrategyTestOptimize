@@ -1,0 +1,7 @@
+- [x] Refactor the code to use the existing indicators library
+- [ ] Add indicator adder when unknown indicator type is encountered
+- [ ] Add human in the loop review for translation of text to spec to improve accuracy of spec
+- [ ] Improve system prompts
+- [ ] Improve Base strategy, and strategy generation compiler
+- [ ] Add constrained autonomy
+- [ ] Make web app for strategy testing
