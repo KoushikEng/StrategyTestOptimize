@@ -5,12 +5,12 @@ Converts natural language or PineScript descriptions into a formal StrategySpec.
 Uses LangChain for model abstraction and output parsing.
 """
 
-import os
 from typing import Optional
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from research_agent.schema import StrategySpec
 from research_agent.tools import write_file
+from research_agent.llm import llm
 
 # Define the Pydantic wrapper for LangChain parser if needed, 
 # or just use the existing StrategySpec directly if compatible.
@@ -44,31 +44,11 @@ You MUST output ONLY valid JSON conforming to the StrategySpec schema.
 {format_instructions}
 """
 
-def get_llm(provider: str, api_key: Optional[str] = None):
-    if provider == "openai":
-        from langchain_openai import ChatOpenAI
-        return ChatOpenAI(
-            model="gpt-4o", 
-            temperature=0.2,
-            api_key=api_key or os.environ.get("OPENAI_API_KEY")
-        )
-    elif provider == "google":
-        from langchain_google_genai import ChatGoogleGenerativeAI
-        return ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
-            temperature=0.2,
-            api_key=api_key or os.environ.get("GOOGLE_API_KEY")
-        )
-    else:
-        raise ValueError(f"Unknown provider: {provider}")
-
 
 def translate(description: str, provider: str = "google", api_key: Optional[str] = None) -> StrategySpec:
     """
     Translate description to StrategySpec using LangChain.
     """
-    llm = get_llm(provider, api_key)
-    
     parser = JsonOutputParser(pydantic_object=StrategySpec)
     
     prompt = ChatPromptTemplate.from_messages([

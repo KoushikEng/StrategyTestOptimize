@@ -5,11 +5,11 @@ Analyzes errors or negative feedback and attempts to fix the StrategySpec.
 Uses LangChain for model abstraction.
 """
 
-import os
 from typing import Optional, Dict
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from research_agent.schema import StrategySpec
+from research_agent.llm import llm
 
 REPAIR_SYSTEM_TEMPLATE = """You are a Strategy Repair Agent. 
 Your job is to FIX a trading strategy specification based on an error message or review feedback.
@@ -28,24 +28,6 @@ Output a CORRECTED JSON Strategy Spec.
 {format_instructions}
 """
 
-def get_llm(provider: str, api_key: Optional[str] = None):
-    if provider == "openai":
-        from langchain_openai import ChatOpenAI
-        return ChatOpenAI(
-            model="gpt-4o", 
-            temperature=0.2,
-            api_key=api_key or os.environ.get("OPENAI_API_KEY")
-        )
-    elif provider == "google":
-        from langchain_google_genai import ChatGoogleGenerativeAI
-        return ChatGoogleGenerativeAI(
-            model="gemini-2.5-flash",
-            temperature=0.2,
-            api_key=api_key or os.environ.get("GOOGLE_API_KEY")
-        )
-    else:
-        raise ValueError(f"Unknown provider: {provider}")
-
 
 def repair_spec(
     current_spec: Dict,
@@ -56,8 +38,6 @@ def repair_spec(
     """
     Repair a strategy spec based on error context using LangChain.
     """
-    llm = get_llm(provider, api_key)
-    
     parser = JsonOutputParser(pydantic_object=StrategySpec)
     
     prompt = ChatPromptTemplate.from_messages([

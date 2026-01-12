@@ -10,3 +10,5 @@ data/
 # Ignore all strategies except Base.py
 strategies/
 !strategies/Base.py
+
+research_agent/runs/specs/
