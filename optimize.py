@@ -4,7 +4,7 @@ import numpy as np
 import argparse
 from multiprocessing import cpu_count
 from Utilities import read_from_csv, DataTuple, get_strategy, get_interval
-from indicators.risk_metrics import calculate_sharpe, calculate_sortino, calculate_max_drawdown
+from calculate.risk_metrics import calculate_sharpe, calculate_sortino, calculate_max_drawdown
 from strategies.Base import Base
 
 def walk_forward_split(data: DataTuple, train_size=1500, test_size=200):
