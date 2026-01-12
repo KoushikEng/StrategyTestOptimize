@@ -278,61 +278,6 @@ def calculate_vwap(high, low, close, volume):
     return vwap
 
 @njit
-def _calculate_ema_slope_simple(ema_values: np.ndarray, lookback: int = 10) -> np.ndarray:
-    n = len(ema_values)
-    slopes = np.empty(n)
-    
-    for i in range(lookback):
-        slopes[i] = np.nan  # Fill front NaNs
-    
-    for i in range(lookback, n):
-        slopes[i] = (ema_values[i] - ema_values[i - lookback]) / lookback
-
-    return slopes
-
-@njit
-def _calculate_ema_slope_linreg(ema_values: np.ndarray, lookback: int = 10) -> np.ndarray:
-    n = len(ema_values)
-    slopes = np.empty(n)
-    x = np.arange(lookback)
-    x_mean = np.mean(x)
-    x_demean = x - x_mean
-    denom = np.sum(x_demean ** 2)
-
-    for i in range(lookback):
-        slopes[i] = np.nan
-
-    for i in range(lookback, n):
-        window = ema_values[i - lookback:i]
-        y_mean = np.mean(window)
-        y_demean = window - y_mean
-        slope = np.sum(x_demean * y_demean) / denom
-        slopes[i] = slope
-
-    return slopes
-
-@njit
-def calculate_ema_slope(ema_values: np.ndarray, lookback: int=10, method: str='simple') -> np.ndarray:
-    """
-    Calculate the slope of an array of EMA values.
-    
-    Args:
-        ema_values (np.ndarray): Array of EMA values.
-        lookback (int): Number of periods to consider for slope calculation (default is 10).
-        method (str): Method for slope calculation ('simple' or 'linreg').
-    
-    Returns:
-        np.ndarray: Array of slope values.
-    """
-    match method:
-        case 'simple':
-            return _calculate_ema_slope_simple(ema_values, lookback)
-        case 'linreg':
-            return _calculate_ema_slope_linreg(ema_values, lookback)
-        case _:
-            raise ValueError("Invalid method. Use 'simple' or 'linreg'.")
-
-@njit
 def _calculate_rolling_std(data: np.ndarray, window: int) -> np.ndarray:
     result = np.full(len(data), np.nan, dtype=float)
     for i in range(window-1, len(data)):
