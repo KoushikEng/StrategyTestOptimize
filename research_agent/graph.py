@@ -14,6 +14,7 @@ from research_agent.nodes import (
     repair_node,
     optimizer_node
 )
+from research_agent.config import MAX_ITERATIONS
 
 def should_repair_after_compile(state: AgentState):
     if state.get("error"):
@@ -37,7 +38,7 @@ def should_repair_after_review(state: AgentState):
     return "optimize"
 
 def should_continue_repair(state: AgentState):
-    if state.get("iterations", 0) >= 3: # MAX_ITERATIONS
+    if state.get("iterations", 0) >= MAX_ITERATIONS:
         return "end" # Give up
     if state.get("error") and "Max iterations" in state.get("error"):
         return "end"

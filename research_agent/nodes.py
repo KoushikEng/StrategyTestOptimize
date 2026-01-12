@@ -12,9 +12,7 @@ from research_agent.repair import repair_spec
 from research_agent.optimizer import optimize_strategy
 from research_agent.schema import StrategySpec
 from main import run_backtest
-
-
-MAX_ITERATIONS = 3
+from research_agent.config import MAX_ITERATIONS
 
 def translator_node(state: AgentState):
     """Generate strategy spec from user request."""
