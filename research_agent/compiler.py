@@ -11,71 +11,18 @@ from research_agent.tools import write_file
 
 
 # Indicator code generators
-INDICATOR_TEMPLATES: Dict[IndicatorType, str] = {
-    IndicatorType.SMA: """
-def calc_{name}(closes, period):
-    sma = np.full(len(closes), np.nan)
-    for i in range(period - 1, len(closes)):
-        sma[i] = np.mean(closes[i - period + 1:i + 1])
-    return sma
-""",
-    IndicatorType.EMA: """
-def calc_{name}(closes, period):
-    ema = np.full(len(closes), np.nan)
-    multiplier = 2 / (period + 1)
-    ema[period - 1] = np.mean(closes[:period])
-    for i in range(period, len(closes)):
-        ema[i] = (closes[i] - ema[i - 1]) * multiplier + ema[i - 1]
-    return ema
-""",
-    IndicatorType.RSI: """
-def calc_{name}(closes, period):
-    n = len(closes)
-    rsi = np.full(n, np.nan)
-    deltas = np.diff(closes)
-    gains = np.where(deltas > 0, deltas, 0)
-    losses = np.where(deltas < 0, -deltas, 0)
-    
-    avg_gain = np.mean(gains[:period])
-    avg_loss = np.mean(losses[:period])
-    
-    for i in range(period, n - 1):
-        avg_gain = (avg_gain * (period - 1) + gains[i]) / period
-        avg_loss = (avg_loss * (period - 1) + losses[i]) / period
-        rs = avg_gain / avg_loss if avg_loss != 0 else 100
-        rsi[i + 1] = 100 - (100 / (1 + rs))
-    return rsi
-""",
-    IndicatorType.ATR: """
-def calc_{name}(highs, lows, closes, period):
-    n = len(closes)
-    atr = np.full(n, np.nan)
-    tr = np.zeros(n)
-    for i in range(1, n):
-        hl = highs[i] - lows[i]
-        hc = abs(highs[i] - closes[i - 1])
-        lc = abs(lows[i] - closes[i - 1])
-        tr[i] = max(hl, hc, lc)
-    atr[period] = np.mean(tr[1:period + 1])
-    for i in range(period + 1, n):
-        atr[i] = (atr[i - 1] * (period - 1) + tr[i]) / period
-    return atr
-""",
-    IndicatorType.BOLLINGER: """
-def calc_{name}(closes, period, std_dev=2):
-    n = len(closes)
-    middle = np.full(n, np.nan)
-    upper = np.full(n, np.nan)
-    lower = np.full(n, np.nan)
-    for i in range(period - 1, n):
-        window = closes[i - period + 1:i + 1]
-        m = np.mean(window)
-        s = np.std(window)
-        middle[i] = m
-        upper[i] = m + std_dev * s
-        lower[i] = m - std_dev * s
-    return middle, upper, lower
-""",
+# Indicator Import Mapping
+# Maps IndicatorType to the function name in calculate.indicators
+INDICATOR_IMPORTS: Dict[IndicatorType, str] = {
+    IndicatorType.SMA: "calculate_sma",
+    IndicatorType.EMA: "calculate_ema",
+    IndicatorType.RSI: "calculate_rsi",
+    IndicatorType.MACD: "calculate_macd",
+    IndicatorType.ATR: "calculate_atr",
+    IndicatorType.BOLLINGER: "calculate_bollinger_bands",
+    IndicatorType.VWAP: "calculate_vwap",
+    IndicatorType.ADX: "calculate_adx",
+    IndicatorType.SUPERTREND: "calculate_supertrend",
 }
 
 
@@ -84,16 +31,32 @@ def _generate_indicator_calls(indicators: list[Indicator]) -> str:
     lines = []
     for ind in indicators:
         params = ind.params
-        if ind.type == IndicatorType.SMA:
-            lines.append(f"        {ind.name} = calc_{ind.name}(closes, {params.get('period', 20)})")
-        elif ind.type == IndicatorType.EMA:
-            lines.append(f"        {ind.name} = calc_{ind.name}(closes, {params.get('period', 20)})")
-        elif ind.type == IndicatorType.RSI:
-            lines.append(f"        {ind.name} = calc_{ind.name}(closes, {params.get('period', 14)})")
-        elif ind.type == IndicatorType.ATR:
-            lines.append(f"        {ind.name} = calc_{ind.name}(highs, lows, closes, {params.get('period', 14)})")
-        elif ind.type == IndicatorType.BOLLINGER:
-            lines.append(f"        {ind.name}_middle, {ind.name}_upper, {ind.name}_lower = calc_{ind.name}(closes, {params.get('period', 20)}, {params.get('std_dev', 2)})")
+        fn_name = INDICATOR_IMPORTS.get(ind.type)
+        if not fn_name:
+            # Fallback or error? For now, skip unknown
+            continue
+
+        # Generate Call based on signature known conventions
+        match ind.type:
+            case IndicatorType.SMA:
+                lines.append(f"        {ind.name} = calculate_sma(closes, {params.get('period', 20)})")
+            case IndicatorType.EMA:
+                lines.append(f"        {ind.name} = calculate_ema(closes, {params.get('period', 20)})")
+            case IndicatorType.RSI:
+                lines.append(f"        {ind.name} = calculate_rsi(closes, {params.get('period', 14)})")
+            case IndicatorType.ATR:
+                lines.append(f"        {ind.name} = calculate_atr(highs, lows, closes, {params.get('period', 14)})")
+            case IndicatorType.BOLLINGER:
+                lines.append(f"        {ind.name}_mid, {ind.name}_up, {ind.name}_low = calculate_bollinger_bands(closes, {params.get('period', 20)}, {params.get('std_dev', 2)})")
+            case IndicatorType.ADX:
+                lines.append(f"        {ind.name}, {ind.name}_pdi, {ind.name}_mdi = calculate_adx(highs, lows, closes, {params.get('period', 14)})")
+            case IndicatorType.SUPERTREND:
+                lines.append(f"        {ind.name} = calculate_supertrend(highs, lows, closes, {params.get('period', 10)}, {params.get('multiplier', 3.0)})")
+            case IndicatorType.MACD:
+                lines.append(f"        {ind.name}, {ind.name}_sig, {ind.name}_hist = calculate_macd(closes, {params.get('fast', 12)}, {params.get('slow', 26)}, {params.get('signal', 9)})")
+            case IndicatorType.VWAP:
+                lines.append(f"        {ind.name} = calculate_vwap(highs, lows, closes, volume)")
+
     return "\n".join(lines)
 
 
@@ -135,12 +98,18 @@ def compile_strategy(spec: StrategySpec) -> str:
         str: Valid Python code for the strategy class
     """
     
-    # Collect unique indicator function definitions
-    indicator_funcs = []
+    # Collect imports needed
+    imports = []
+    needed_funcs = set()
     for ind in spec.indicators:
-        template = INDICATOR_TEMPLATES.get(ind.type)
-        if template:
-            indicator_funcs.append(template.format(name=ind.name))
+        fn_name = INDICATOR_IMPORTS.get(ind.type)
+        if fn_name:
+            needed_funcs.add(fn_name)
+    
+    if needed_funcs:
+        imports.append(f"from calculate.indicators import {', '.join(sorted(needed_funcs))}")
+    
+    indicator_imports_str = "\n".join(imports)
     
     indicator_calls = _generate_indicator_calls(spec.indicators)
     entry_logic = _generate_entry_logic(spec.entry_conditions)
@@ -156,9 +125,7 @@ Auto-generated strategy: {spec.name}
 from strategies.Base import Base
 import numpy as np
 from numba import njit
-
-# Indicator Functions
-{chr(10).join(indicator_funcs)}
+{indicator_imports_str}
 
 class {spec.name}(Base):
     """
