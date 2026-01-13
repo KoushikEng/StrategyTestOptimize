@@ -6,14 +6,19 @@ import numpy as np
 from numba import njit
 from calculate.indicators.core import calculate_sma, _calculate_rolling_std
 
+from collections import namedtuple
+
+# Define outputs for structured access
+BollingerBands = namedtuple('BollingerBands', ['middle', 'upper', 'lower'])
+
 @njit
-def calculate_bollinger_bands(data: np.ndarray, window: int, num_std: float = 2.0) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+def calculate_bollinger_bands(data: np.ndarray, window: int, num_std: float = 2.0):
     """
-    Calculate Bollinger Bands.
+    Calculate Bollinger Bands. Returns NamedTuple(middle, upper, lower).
     """
     middle_band = calculate_sma(data, window)
     std_dev = _calculate_rolling_std(data, window)
     upper_band = middle_band + (num_std * std_dev)
     lower_band = middle_band - (num_std * std_dev)
     
-    return middle_band, upper_band, lower_band
+    return BollingerBands(middle_band, upper_band, lower_band)

@@ -6,16 +6,21 @@ import numpy as np
 from numba import njit
 from calculate.indicators.core import calculate_ema
 
+from collections import namedtuple
+
+MACDResult = namedtuple('MACDResult', ['macd', 'signal', 'hist'])
+
 @njit
 def calculate_macd(prices, fast=12, slow=26, signal=9):
     """
-    Calculate the MACD (Moving Average Convergence Divergence).
+    Calculate MACD. Returns NamedTuple(macd, signal, hist).
     """
     ema_fast = calculate_ema(prices, fast)
     ema_slow = calculate_ema(prices, slow)
     macd_line = ema_fast - ema_slow
     signal_line = calculate_ema(macd_line, signal)
-    return macd_line, signal_line, macd_line - signal_line
+    histogram = macd_line - signal_line
+    return MACDResult(macd_line, signal_line, histogram)
 
 @njit
 def calculate_rsi(prices: np.ndarray, period: int = 14) -> np.ndarray:

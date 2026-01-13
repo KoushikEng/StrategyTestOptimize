@@ -28,6 +28,16 @@ You MUST output ONLY valid JSON conforming to the StrategySpec schema.
 - Use Python comparison operators: <, >, <=, >=, ==, !=
 - For crossovers: "fast_ema[i] > slow_ema[i] and fast_ema[i-1] <= slow_ema[i-1]"
 
+## Composite Indicators (CRITICAL)
+- Treat composite indicators (e.g., Ichimoku, Bollinger, MACD, etc.) as **SINGLE** entries in the `indicators` list.
+- Use generic types: `type="ichimoku"`, `type="bollinger"`, `type="stoch"`.
+- Do NOT split them (e.g., do NOT use `ichimoku_tenkan`).
+- **Access Components via Dot Notation**:
+    -   Ichimoku ($name="cloud"$): `cloud.tenkan[i]`, `cloud.kijun[i]`, `cloud.senkou_a[i]`, `cloud.senkou_b[i]`
+    -   Bollinger ($name="bb"$): `bb.upper[i]`, `bb.middle[i]`, `bb.lower[i]`
+    -   MACD ($name="macd"$): `macd.macd[i]`, `macd.signal[i]`, `macd.hist[i]`
+    -   ADX ($name="adx"$): `adx.adx[i]`, `adx.pdi[i]`, `adx.mdi[i]`
+
 ## Rules
 1. Extract the LOGIC, not the exact code.
 2. Keep it simple - no complex nested logic.

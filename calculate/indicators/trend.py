@@ -6,10 +6,14 @@ import numpy as np
 from numba import njit
 from calculate.indicators.core import calculate_atr
 
+from collections import namedtuple
+
+ADXResult = namedtuple('ADXResult', ['adx', 'pdi', 'mdi'])
+
 @njit
-def calculate_adx(high: np.ndarray, low: np.ndarray, close: np.ndarray, period: int = 14) -> np.ndarray:
+def calculate_adx(high: np.ndarray, low: np.ndarray, close: np.ndarray, period: int = 14):
     """
-    Calculate the Average Directional Index (ADX).
+    Calculate ADX. Returns NamedTuple(adx, pdi, mdi).
     """
     n = len(close)
     plus_dm = np.zeros(n)
@@ -58,7 +62,7 @@ def calculate_adx(high: np.ndarray, low: np.ndarray, close: np.ndarray, period: 
     for i in range(period * 2 + 1, n):
         adx[i] = ((adx[i - 1] * (period - 1)) + dx[i]) / period
 
-    return adx, plus_di, minus_di
+    return ADXResult(adx, plus_di, minus_di)
 
 @njit
 def calculate_supertrend(high: np.ndarray, low: np.ndarray, close: np.ndarray, period: int=10, multiplier: float=3.0) -> np.ndarray:

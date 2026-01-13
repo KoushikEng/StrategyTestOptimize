@@ -18,12 +18,11 @@ def translator_node(state: AgentState):
     """Generate strategy spec from user request."""
     print("--- TRANSLATOR ---")
     try:
-        # Default to google for now, or pick from args if we stored it
         spec = translate(state["user_request"])
         save_spec(spec)
         return {"strategy_spec": spec.model_dump(), "error": None}
     except Exception as e:
-        print(f"Translation failed: {e}")
+        print(f"Translation error: {e}")
         exit(1)
         return {"error": f"Translation error: {str(e)}"}
 

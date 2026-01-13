@@ -23,9 +23,14 @@ def get_indicator_function_name(name: str) -> Optional[str]:
     
     def try_import():
         try:
-            # Reload to capture new additions
+            # Force reload of the package and its submodules
+            # This is expensive but necessary for "hot-loading" new indicators
             if "calculate.indicators" in sys.modules:
                 importlib.reload(sys.modules["calculate.indicators"])
+                # Also reload submodules (trend, momentum, etc)
+                for mod_name in list(sys.modules.keys()):
+                    if mod_name.startswith("calculate.indicators."):
+                        importlib.reload(sys.modules[mod_name])
             else:
                 importlib.import_module("calculate.indicators")
                 
@@ -91,14 +96,12 @@ def _generate_indicator_calls(indicators: list[Indicator]) -> str:
                     args = "closes"
 
         # Return unpacking
-        if ind.type in [IndicatorType.BOLLINGER]:
-             lines.append(f"        {ind.name}_mid, {ind.name}_up, {ind.name}_low = {fn_name}({args})")
-        elif ind.type in [IndicatorType.MACD]:
-             lines.append(f"        {ind.name}, {ind.name}_sig, {ind.name}_hist = {fn_name}({args})")
-        elif ind.type in [IndicatorType.ADX]:
-             lines.append(f"        {ind.name}, {ind.name}_pdi, {ind.name}_mdi = {fn_name}({args})")
-        else:
-             lines.append(f"        {ind.name} = {fn_name}({args})")
+        # PHASE 3 UPDATE: We use NamedTuples (or Objects) for composite indicators.
+        # So we do NOT unpack them here. We assign the result to the indicator name.
+        # The strategy logic (via Dot Notation) determines access.
+        
+        # Default Assignment
+        lines.append(f"        {ind.name} = {fn_name}({args})")
 
     return "\n".join(lines)
 

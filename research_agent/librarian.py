@@ -29,14 +29,32 @@ Indicator Name: {name}
 
 ## Requirements
 1.  **Numba Optimized**: Decorate with `@njit`.
-2.  **Inputs**: Typically `(closes, period)` or `(highs, lows, closes, period)`.
-3.  **Outputs**: A numpy array of the same length as input, or a tuple of arrays.
+2.  **Imports**:
+    -   `import numpy as np`
+    -   `from numba import njit`
+    -   **Reuse Primitives**: IF you need SMA, EMA, ATR, or Rolling Std, you MUST import them:
+        `from calculate.indicators.core import calculate_sma, calculate_ema, calculate_atr, _calculate_rolling_std`
+    -   Do NOT reimplement these primitives.
+3.  **Outputs**:
+    -   If the indicator returns a single array, return `np.ndarray`.
+    -   If it returns MULTIPLE arrays (e.g., Bollinger, Ichimoku), you MUST return a `collections.namedtuple`.
+    -   Since `numba.njit` supports namedtuples, define it *outside* the function.
+    -   Example:
+        ```python
+        BbandsResult = namedtuple('BbandsResult', ['middle', 'upper', 'lower'])
+        
+        @njit
+        def calculate_bollinger(...):
+            ...
+            return BbandsResult(mid, up, low)
+        ```
+    -   **Ichimoku Components**: tenkan, kijun, senkou_a, senkou_b, chikou.
 4.  **No Pandas**: Use purely `numpy` arrays.
-5.  **Imports**: Assume `import numpy as np` and `from numba import njit` are already present in the file.
+5.  **Imports**: Assume `import numpy as np`, `from numba import njit` and `from collections import namedtuple` are already present in the file.
 6.  **Style**: PEP8.
 
 ## Output Format
-Return ONLY the Python function code. No markdown formatting.
+Return ONLY the Python code (imports + namedtuple def + function).
 Function name MUST be `calculate_{name}`.
 """
 
