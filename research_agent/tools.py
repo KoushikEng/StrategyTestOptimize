@@ -16,9 +16,13 @@ def write_file(file_path, content, mode='w'):
     """
     # if not check_if_path_in_workspace(file_path):
     #     raise ValueError("Path is not within the workspace directory.")
-    with open(file_path, mode) as f:
-        res = f.write(content)
-    return res
+    try:
+        with open(file_path, mode, encoding='utf-8') as f:
+            res = f.write(content)
+        return res
+    except Exception as e:
+        print(f"Error writing to file: {e}")
+        return None
 
 def read_file(file_path, mode='r'):
     """Read content from a file.
@@ -29,6 +33,6 @@ def read_file(file_path, mode='r'):
     """
     # if not check_if_path_in_workspace(file_path):
     #     raise ValueError("Path is not within the workspace directory.")
-    with open(file_path, mode) as f:
+    with open(file_path, mode, encoding='utf-8') as f:
         res = f.read()
     return res
