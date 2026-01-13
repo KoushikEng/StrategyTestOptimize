@@ -6,56 +6,99 @@ This is a DETERMINISTIC, SANDBOXED component - no LLM involvement.
 """
 
 from research_agent.schema import StrategySpec, Indicator, IndicatorType
-from typing import Dict
+from typing import Dict, Optional
 from research_agent.tools import write_file
+from research_agent.librarian import add_indicator
+import importlib
+import sys
 
+# Dynamic Import Wrapper
+def get_indicator_function_name(name: str) -> Optional[str]:
+    """
+    Dynamically resolve indicator function name.
+    If missing, trigger Librarian to create it.
+    Returns the valid function name (e.g. 'calculate_sma') or None.
+    """
+    func_name = f"calculate_{name}"
+    
+    def try_import():
+        try:
+            # Reload to capture new additions
+            if "calculate.indicators" in sys.modules:
+                importlib.reload(sys.modules["calculate.indicators"])
+            else:
+                importlib.import_module("calculate.indicators")
+                
+            module = sys.modules["calculate.indicators"]
+            return hasattr(module, func_name)
+        except ImportError:
+            return False
 
-# Indicator code generators
-# Indicator Import Mapping
-# Maps IndicatorType to the function name in calculate.indicators
-INDICATOR_IMPORTS: Dict[IndicatorType, str] = {
-    IndicatorType.SMA: "calculate_sma",
-    IndicatorType.EMA: "calculate_ema",
-    IndicatorType.RSI: "calculate_rsi",
-    IndicatorType.MACD: "calculate_macd",
-    IndicatorType.ATR: "calculate_atr",
-    IndicatorType.BOLLINGER: "calculate_bollinger_bands",
-    IndicatorType.VWAP: "calculate_vwap",
-    IndicatorType.ADX: "calculate_adx",
-    IndicatorType.SUPERTREND: "calculate_supertrend",
-}
+    if try_import():
+        return func_name
+    
+    # Not found -> Invoke Librarian
+    print(f"⚠️ Indicator '{name}' not found. Invoking Librarian...")
+    try:
+        success = add_indicator(name)
+        if success:
+            if try_import():
+                print(f"new indicator function '{func_name}' added successfully")
+                return func_name
+    except Exception as e:
+        print(f"Librarian error: {e}")
+        
+    return None
 
 
 def _generate_indicator_calls(indicators: list[Indicator]) -> str:
     """Generate indicator calculation calls."""
     lines = []
+    
     for ind in indicators:
-        params = ind.params
-        fn_name = INDICATOR_IMPORTS.get(ind.type)
+        # 1. Ensure it exists (Trigger Librarian side-effect)
+        fn_name = get_indicator_function_name(ind.type)
         if not fn_name:
-            # Fallback or error? For now, skip unknown
+            print(f"❌ Could not resolve indicator: {ind.type}")
             continue
 
-        # Generate Call based on signature known conventions
+        params = ind.params
+        
+        # 2. Generate Call Code
+        # We use known patterns for standard indicators, and a generic fallback for new ones.
+        
+        args = ""
+        # Standard Signatures
         match ind.type:
-            case IndicatorType.SMA:
-                lines.append(f"        {ind.name} = calculate_sma(closes, {params.get('period', 20)})")
-            case IndicatorType.EMA:
-                lines.append(f"        {ind.name} = calculate_ema(closes, {params.get('period', 20)})")
-            case IndicatorType.RSI:
-                lines.append(f"        {ind.name} = calculate_rsi(closes, {params.get('period', 14)})")
-            case IndicatorType.ATR:
-                lines.append(f"        {ind.name} = calculate_atr(highs, lows, closes, {params.get('period', 14)})")
+            case IndicatorType.SMA | IndicatorType.EMA | IndicatorType.RSI:
+                args = f"closes, {params.get('period', 14)}"
+            case IndicatorType.ATR | IndicatorType.ADX | "keltner": # Example of new ones
+                args = f"highs, lows, closes, {params.get('period', 14)}"
             case IndicatorType.BOLLINGER:
-                lines.append(f"        {ind.name}_mid, {ind.name}_up, {ind.name}_low = calculate_bollinger_bands(closes, {params.get('period', 20)}, {params.get('std_dev', 2)})")
-            case IndicatorType.ADX:
-                lines.append(f"        {ind.name}, {ind.name}_pdi, {ind.name}_mdi = calculate_adx(highs, lows, closes, {params.get('period', 14)})")
-            case IndicatorType.SUPERTREND:
-                lines.append(f"        {ind.name} = calculate_supertrend(highs, lows, closes, {params.get('period', 10)}, {params.get('multiplier', 3.0)})")
-            case IndicatorType.MACD:
-                lines.append(f"        {ind.name}, {ind.name}_sig, {ind.name}_hist = calculate_macd(closes, {params.get('fast', 12)}, {params.get('slow', 26)}, {params.get('signal', 9)})")
+                args = f"closes, {params.get('period', 20)}, {params.get('std_dev', 2)}"
             case IndicatorType.VWAP:
-                lines.append(f"        {ind.name} = calculate_vwap(highs, lows, closes, volume)")
+                args = "highs, lows, closes, volume"
+            case IndicatorType.SUPERTREND:
+                args = f"highs, lows, closes, {params.get('period', 10)}, {params.get('multiplier', 3.0)}"
+            case IndicatorType.MACD:
+                args = f"closes, {params.get('fast', 12)}, {params.get('slow', 26)}, {params.get('signal', 9)}"
+            case _:
+                # Generic Fallback for unknown/new indicators
+                # Heuristic: if 'period' in params, pass it.
+                if 'period' in params:
+                    args = f"closes, {params['period']}"
+                else:
+                    args = "closes"
+
+        # Return unpacking
+        if ind.type in [IndicatorType.BOLLINGER]:
+             lines.append(f"        {ind.name}_mid, {ind.name}_up, {ind.name}_low = {fn_name}({args})")
+        elif ind.type in [IndicatorType.MACD]:
+             lines.append(f"        {ind.name}, {ind.name}_sig, {ind.name}_hist = {fn_name}({args})")
+        elif ind.type in [IndicatorType.ADX]:
+             lines.append(f"        {ind.name}, {ind.name}_pdi, {ind.name}_mdi = {fn_name}({args})")
+        else:
+             lines.append(f"        {ind.name} = {fn_name}({args})")
 
     return "\n".join(lines)
 
@@ -90,21 +133,17 @@ def _generate_optimization_params(params: Dict[str, tuple]) -> str:
 def compile_strategy(spec: StrategySpec) -> str:
     """
     Compile a StrategySpec into executable Python code.
-    
-    Args:
-        spec: The strategy specification
-        
-    Returns:
-        str: Valid Python code for the strategy class
     """
     
     # Collect imports needed
     imports = []
     needed_funcs = set()
     for ind in spec.indicators:
-        fn_name = INDICATOR_IMPORTS.get(ind.type)
-        if fn_name:
-            needed_funcs.add(fn_name)
+        fn_name = f"calculate_{ind.type}"
+        # We assume _generate_indicator_calls has run or will run, 
+        # but better to just import what we expect. 
+        # The dynamic loader ensures they exist.
+        needed_funcs.add(fn_name)
     
     if needed_funcs:
         imports.append(f"from calculate.indicators import {', '.join(sorted(needed_funcs))}")
@@ -184,13 +223,6 @@ class {spec.name}(Base):
 def save_strategy(spec: StrategySpec, output_dir: str = "strategies") -> str:
     """
     Compile and save a strategy to a .py file.
-    
-    Args:
-        spec: The strategy specification
-        output_dir: Directory to save the file
-        
-    Returns:
-        str: Path to the saved file
     """
     import os
     
@@ -209,32 +241,27 @@ def save_strategy(spec: StrategySpec, output_dir: str = "strategies") -> str:
 
 # Example / Testing
 if __name__ == "__main__":
-    from research_agent.schema import StrategySpec, Indicator, Condition, IndicatorType
+    from research_agent.schema import StrategySpec, Indicator, Condition
     
-    # Create a test spec
+    # Create a test spec with a NEW indicator
     test_spec = StrategySpec(
-        name="TestRsiStrategy",
-        description="Buy when RSI < 30, sell when RSI > 70",
+        name="TestNewInd",
+        description="Testing Librarian",
         indicators=[
-            Indicator(name="rsi", type=IndicatorType.RSI, params={"period": 14})
+            Indicator(name="kelt", type="keltner_channel", params={"period": 20})
         ],
-        entry_conditions=[
-            Condition(expression="rsi[i] < 30", description="RSI oversold")
-        ],
-        exit_conditions=[
-            Condition(expression="rsi[i] > 70", description="RSI overbought")
-        ],
-        optimization_params={
-            "rsi_period": (7, 21)
-        }
+        entry_conditions=[],
+        exit_conditions=[],
+        optimization_params={}
     )
     
     # Compile
-    code = compile_strategy(test_spec)
-    print("Generated Code:")
-    print("=" * 60)
-    print(code)
-    
-    # Save
-    path = save_strategy(test_spec)
-    print(f"\nSaved to: {path}")
+    # This should trigger Librarian to created calculate_keltner_channel in indicators/
+    print("Compiling (expecting Librarian trigger)...")
+    # Note: This will likely fail if no API key, but proves the flow
+    try:
+        code = compile_strategy(test_spec)
+        print("Generated Code:")
+        print(code)
+    except Exception as e:
+        print(f"Compilation/Librarian Error: {e}")

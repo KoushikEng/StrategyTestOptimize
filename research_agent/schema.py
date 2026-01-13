@@ -10,8 +10,10 @@ from typing import List, Optional, Dict, Any, Literal
 from enum import Enum
 
 
-class IndicatorType(str, Enum):
-    """Supported indicator types."""
+class IndicatorType:
+    """Supported indicator types (Standard Library).
+    New types can be added dynamically as strings.
+    """
     SMA = "sma"
     EMA = "ema"
     RSI = "rsi"
@@ -27,7 +29,7 @@ class IndicatorType(str, Enum):
 class Indicator(BaseModel):
     """Definition of an indicator used in the strategy."""
     name: str = Field(..., description="Identifier for this indicator instance, e.g., 'fast_ema'")
-    type: IndicatorType = Field(..., description="Type of indicator")
+    type: str = Field(..., description="Type of indicator (e.g. 'sma', 'keltner_channel')")
     params: Dict[str, Any] = Field(default_factory=dict, description="Indicator parameters, e.g., {'period': 14}")
     
     @field_validator('name')

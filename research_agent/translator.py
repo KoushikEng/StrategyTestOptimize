@@ -23,13 +23,6 @@ SYSTEM_TEMPLATE = """You are a trading strategy translator. Your job is to conve
 ## Output Format
 You MUST output ONLY valid JSON conforming to the StrategySpec schema.
 
-## Supported Indicators (use EXACTLY these type values)
-- "sma" (Simple Moving Average) - params: period
-- "ema" (Exponential Moving Average) - params: period  
-- "rsi" (Relative Strength Index) - params: period
-- "atr" (Average True Range) - params: period
-- "bollinger" (Bollinger Bands) - params: period, std_dev
-
 ## Expression Syntax
 - Use [i] to index the current bar, e.g., "rsi[i] < 30"
 - Use Python comparison operators: <, >, <=, >=, ==, !=
@@ -37,15 +30,14 @@ You MUST output ONLY valid JSON conforming to the StrategySpec schema.
 
 ## Rules
 1. Extract the LOGIC, not the exact code.
-2. Map to supported indicators only.
-3. Keep it simple - no complex nested logic.
-4. Always provide optimization bounds for tunable parameters.
+2. Keep it simple - no complex nested logic.
+3. Always provide optimization bounds for tunable parameters.
 
 {format_instructions}
 """
 
 
-def translate(description: str, provider: str = "google", api_key: Optional[str] = None) -> StrategySpec:
+def translate(description: str) -> StrategySpec:
     """
     Translate description to StrategySpec using LangChain.
     """

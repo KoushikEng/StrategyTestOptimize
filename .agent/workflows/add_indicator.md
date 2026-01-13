@@ -4,21 +4,20 @@ description: How to add a new technical indicator to the Research Agent system
 
 # Adding a New Indicator
 
-This workflow guides you through adding a new technical indicator (e.g., ADX, SuperTrend) so that the AI Research Agent can use it.
+The system now features an autonomous **Librarian Agent** that handles this process automatically.
 
-1.  **Update Schema** (`research_agent/schema.py`):
-    -   Add the indicator key to the `IndicatorType` Enum.
-    -   Example: `SUPERTREND = "supertrend"`
+## Automated Process
+1.  **Request Strategy**: Provide a strategy description with a new indicator (e.g., "Use Keltner Channels").
+2.  **Detection**: The Compiler detects `keltner_channel` is missing from the library.
+3.  **Librarian Trigger**: The Librarian Agent is invoked.
+    -   It classifies the indicator (e.g., "Volatility").
+    -   It generates Numba-optimized code.
+    -   It appends the code to `calculate/indicators/volatility.py`.
+    -   It updates `calculate/indicators/__init__.py`.
+4.  **Compilation**: The compilation retries and succeeds.
 
-2.  **Update Compiler** (`research_agent/compiler.py`):
-    -   Add the Numba-optimized implementation to `INDICATOR_TEMPLATES`.
-    -   **Constraint**: Must use `numpy` (and `numba` if possible). Avoid pandas in the core logic loop for speed.
-    -   Add the call logic to `_generate_indicator_calls`.
-
-3.  **Update Translator** (`research_agent/translator.py`):
-    -   Update the system prompt to list the new indicator as "Supported".
-    -   (Optional) If using `langchain` prompt templates, update the template string.
-
-4.  **Verification**:
-    -   Create a manual test spec in `research_agent/compiler.py` (`__main__` block) using the new indicator.
-    -   Run `python -m research_agent.compiler` to ensure it generates valid Python code.
+## Manual Override (If needed)
+If you wish to add one manually:
+1.  Open the appropriate file in `calculate/indicators/` (e.g., `trend.py`).
+2.  Add your `@njit` function: `def calculate_my_ind(...)`.
+3.  Add the export to `calculate/indicators/__init__.py`.
