@@ -22,6 +22,7 @@ def calculate_rsi(prices: np.ndarray, period: int = 14) -> np.ndarray:
     """
     Calculate the Relative Strength Index (RSI).
     """
+    prices = np.ascontiguousarray(prices)
     deltas = np.diff(prices)
     gains = np.maximum(deltas, 0)
     losses = np.maximum(-deltas, 0)
