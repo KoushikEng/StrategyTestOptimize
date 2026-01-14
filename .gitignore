@@ -8,7 +8,7 @@ data/
 .env
 
 # Ignore all strategies except Base.py
-strategies/
-!strategies/Base.py
+# strategies/
+# !strategies/Base.py
 
-research_agent/runs/specs/
+# research_agent/runs/specs/

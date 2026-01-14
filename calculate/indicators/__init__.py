@@ -8,3 +8,5 @@ from .trend import calculate_adx, calculate_supertrend
 from .momentum import calculate_macd, calculate_rsi
 from .volatility import calculate_bollinger_bands
 from .volume import calculate_vwap
+
+from .trend import calculate_ichimoku

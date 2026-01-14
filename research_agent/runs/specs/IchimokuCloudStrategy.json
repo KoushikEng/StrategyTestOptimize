@@ -1,0 +1,63 @@
+{
+  "name": "IchimokuCloudStrategy",
+  "description": "Ichimoku Cloud trading strategy with long and short entries based on cloud position, conversion line crossover, lagging line, and pullback to Kijun or Tenkan. Exits on opposite Kijun or cloud edge, Tenkan crossover, or stop loss at cloud edge.",
+  "indicators": [
+    {
+      "name": "cloud",
+      "type": "ichimoku",
+      "params": {
+        "period1": 9,
+        "period2": 26,
+        "period3": 52
+      }
+    }
+  ],
+  "entry_conditions": [
+    {
+      "expression": "(close[i] > cloud.senkou_a[i] or close[i] > cloud.senkou_b[i]) and cloud.tenkan[i] > cloud.kijun[i] and cloud.chikou[i] > close[i-26] and (close[i] <= cloud.tenkan[i] or close[i] <= cloud.kijun[i]) or (close[i] < cloud.senkou_a[i] or close[i] < cloud.senkou_b[i]) and cloud.tenkan[i] < cloud.kijun[i] and cloud.chikou[i] < close[i-26] and (close[i] >= cloud.tenkan[i] or close[i] >= cloud.kijun[i])",
+      "description": "Long or short entry based on cloud position, conversion line crossover, lagging line, and pullback to Kijun or Tenkan."
+    }
+  ],
+  "exit_conditions": [
+    {
+      "expression": "close[i] >= cloud.kijun[i] or close[i] >= cloud.senkou_a[i] or close[i] >= cloud.senkou_b[i]",
+      "description": "Long take profit when price reaches Kijun or cloud edge."
+    },
+    {
+      "expression": "close[i] <= cloud.kijun[i] or close[i] <= cloud.senkou_a[i] or close[i] <= cloud.senkou_b[i]",
+      "description": "Short take profit when price reaches Kijun or cloud edge."
+    },
+    {
+      "expression": "cloud.tenkan[i] < cloud.kijun[i] and cloud.tenkan[i-1] >= cloud.kijun[i-1]",
+      "description": "Long exit on Tenkan crossing below Kijun."
+    },
+    {
+      "expression": "cloud.tenkan[i] > cloud.kijun[i] and cloud.tenkan[i-1] <= cloud.kijun[i-1]",
+      "description": "Short exit on Tenkan crossing above Kijun."
+    },
+    {
+      "expression": "close[i] < cloud.senkou_a[i] or close[i] < cloud.senkou_b[i]",
+      "description": "Long stop loss when price falls below cloud."
+    },
+    {
+      "expression": "close[i] > cloud.senkou_a[i] or close[i] > cloud.senkou_b[i]",
+      "description": "Short stop loss when price rises above cloud."
+    }
+  ],
+  "position_type": "both",
+  "risk_management": null,
+  "optimization_params": {
+    "period1": [
+      5,
+      20
+    ],
+    "period2": [
+      20,
+      50
+    ],
+    "period3": [
+      50,
+      100
+    ]
+  }
+}

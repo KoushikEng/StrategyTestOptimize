@@ -103,3 +103,82 @@ def calculate_supertrend(high: np.ndarray, low: np.ndarray, close: np.ndarray, p
                 final_upperband[i] = final_upperband[i - 1]
 
     return trend
+
+
+import numpy as np
+from numba import njit
+from collections import namedtuple
+# Reuse primitives (not used directly here but required by the specification)
+from calculate.indicators.core import calculate_sma, calculate_ema, calculate_atr, _calculate_rolling_std
+
+# Namedtuple for the result
+IchimokuResult = namedtuple(
+    'IchimokuResult',
+    ['tenkan', 'kijun', 'senkou_a', 'senkou_b', 'chikou']
+)
+
+@njit
+def calculate_ichimoku(high: np.ndarray, low: np.ndarray, close: np.ndarray) -> IchimokuResult:
+    """
+    Calculate the Ichimoku Kinko Hyo indicator components.
+
+    Parameters
+    ----------
+    high : np.ndarray
+        Array of high prices.
+    low : np.ndarray
+        Array of low prices.
+    close : np.ndarray
+        Array of close prices.
+
+    Returns
+    -------
+    IchimokuResult
+        Namedtuple containing the following arrays:
+        - tenkan: Tenkan-sen (conversion line)
+        - kijun: Kijun-sen (base line)
+        - senkou_a: Senkou Span A (leading span A)
+        - senkou_b: Senkou Span B (leading span B)
+        - chikou: Chikou Span (lagging line)
+    """
+    n = high.shape[0]
+    # Initialize output arrays with NaNs
+    tenkan = np.full(n, np.nan, dtype=np.float64)
+    kijun = np.full(n, np.nan, dtype=np.float64)
+    senkou_a = np.full(n, np.nan, dtype=np.float64)
+    senkou_b = np.full(n, np.nan, dtype=np.float64)
+    chikou = np.full(n, np.nan, dtype=np.float64)
+
+    # Tenkan-sen (9-period)
+    for i in range(8, n):
+        high_window = high[i-8:i+1]
+        low_window = low[i-8:i+1]
+        tenkan[i] = (np.max(high_window) + np.min(low_window)) / 2.0
+
+    # Kijun-sen (26-period)
+    for i in range(25, n):
+        high_window = high[i-25:i+1]
+        low_window = low[i-25:i+1]
+        kijun[i] = (np.max(high_window) + np.min(low_window)) / 2.0
+
+    # Senkou Span A (average of Tenkan and Kijun, plotted 26 periods ahead)
+    for i in range(8, n):
+        if not np.isnan(tenkan[i]) and not np.isnan(kijun[i]):
+            idx = i + 26
+            if idx < n:
+                senkou_a[idx] = (tenkan[i] + kijun[i]) / 2.0
+
+    # Senkou Span B (52-period, plotted 26 periods ahead)
+    for i in range(51, n):
+        high_window = high[i-51:i+1]
+        low_window = low[i-51:i+1]
+        value = (np.max(high_window) + np.min(low_window)) / 2.0
+        idx = i + 26
+        if idx < n:
+            senkou_b[idx] = value
+
+    # Chikou Span (close plotted 26 periods behind)
+    for i in range(26, n):
+        chikou[i] = close[i-26]
+
+    return IchimokuResult(tenkan, kijun, senkou_a, senkou_b, chikou)
