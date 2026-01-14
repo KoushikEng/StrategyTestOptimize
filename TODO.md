@@ -1,6 +1,6 @@
 - [x] Refactor the code to use the existing indicators library
-- [ ] Add indicator adder (librarian) when unknown indicator type is encountered
-    - [ ] Improve librarian to use existing core indicators when required for new indicators
+- [x] Add indicator adder (librarian) when unknown indicator type is encountered
+    - [x] Improve librarian to use existing core indicators when required for new indicators
 - [ ] Add human in the loop review for translation of text to spec to improve accuracy of spec
 - [ ] Improve system prompts
 - [ ] Improve Base strategy, and strategy generation compiler

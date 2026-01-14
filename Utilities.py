@@ -18,6 +18,7 @@ import config
 from typing import TypeAlias
 from numpy.typing import NDArray
 from types import ModuleType
+from importlib import import_module
 
 
 DataTuple: TypeAlias = Tuple[str, NDArray, NDArray, NDArray, NDArray, NDArray, NDArray, NDArray]
@@ -53,9 +54,9 @@ def get_strategy(strategy: str) -> ModuleType:
         module: strategy module
     """
     try:
-        return __import__(f'strategies.{strategy}', fromlist=[strategy])
-    except ImportError:
-        raise ValueError(f"Strategy {strategy} not found")
+        return import_module(f'strategies.{strategy}')
+    except ImportError as e:
+        raise ValueError(f"Error importing the strategy '{strategy}': {e}")
     except Exception as e:
         raise e
 

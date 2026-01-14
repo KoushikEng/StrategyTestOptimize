@@ -82,6 +82,7 @@ def run_backtest(symbols: list, strategy_name: str, interval: str = '5', downloa
     
     print(f"Running {strategy_name} on {len(symbols)} symbols...")
     
+    # Execute
     execution_results = []
     
     run_with_kwargs = partial(strategy_instance.process, **kwargs)
@@ -96,8 +97,8 @@ def run_backtest(symbols: list, strategy_name: str, interval: str = '5', downloa
                 res = run_with_kwargs(data)
                 execution_results.append(res)
             except Exception as e:
-                print(f"Error running strategy on {data[0]}: {e}")
-                execution_results.append((np.array([1.0]), np.array([0.0]), 0.0))
+                raise e
+                execution_results.append((np.array([1.0]), np.array([0.0]), 0.0, 0))
         
     final_results = []
     for i, (symbol, *_) in enumerate(data_list):
