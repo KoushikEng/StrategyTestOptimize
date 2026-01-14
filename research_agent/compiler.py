@@ -23,7 +23,7 @@ def get_indicator_function_name(name: str) -> Optional[str]:
 
     INDICATORS_PACKAGE = "calculate.indicators"
     
-    def try_import(new_ind_category: Optional[str]):
+    def try_import(new_ind_category: Optional[str] = None):
         try:
             if new_ind_category and INDICATORS_PACKAGE in sys.modules:  # Reload if already imported
                 submod = f"{INDICATORS_PACKAGE}.{new_ind_category}"

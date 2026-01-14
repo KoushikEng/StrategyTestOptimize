@@ -39,6 +39,8 @@ def compiler_node(state: AgentState):
         path = save_strategy(spec)
         return {"strategy_path": path, "error": None}
     except Exception as e:
+        print(f"Compilation error: {e}")
+        exit(1)
         return {"error": f"Compilation error: {str(e)}"}
 
 def backtester_node(state: AgentState):
