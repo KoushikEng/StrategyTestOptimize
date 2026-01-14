@@ -4,8 +4,7 @@ Momentum Indicators
 
 import numpy as np
 from numba import njit
-from calculate.indicators.core import calculate_ema
-
+from .core import *
 from collections import namedtuple
 
 MACDResult = namedtuple('MACDResult', ['macd', 'signal', 'hist'])

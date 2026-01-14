@@ -20,23 +20,26 @@ def get_indicator_function_name(name: str) -> Optional[str]:
     Returns the valid function name (e.g. 'calculate_sma') or None.
     """
     func_name = f"calculate_{name}"
+
+    INDICATORS_PACKAGE = "calculate.indicators"
     
-    def try_import():
+    def try_import(new_ind_category: Optional[str]):
         try:
-            # Force reload of the package and its submodules
-            # This is expensive but necessary for "hot-loading" new indicators
-            if "calculate.indicators" in sys.modules:
-                importlib.reload(sys.modules["calculate.indicators"])
-                # Also reload submodules (trend, momentum, etc)
-                for mod_name in list(sys.modules.keys()):
-                    if mod_name.startswith("calculate.indicators."):
-                        importlib.reload(sys.modules[mod_name])
-            else:
-                importlib.import_module("calculate.indicators")
-                
-            module = sys.modules["calculate.indicators"]
+            if new_ind_category and INDICATORS_PACKAGE in sys.modules:  # Reload if already imported
+                submod = f"{INDICATORS_PACKAGE}.{new_ind_category}"
+                if submod in sys.modules:
+                    # First reload submodules (trend, momentum, etc)
+                    importlib.reload(sys.modules[submod])
+
+                # Then main module
+                importlib.reload(sys.modules[INDICATORS_PACKAGE])
+            else:  # Import first time
+                importlib.import_module(INDICATORS_PACKAGE)
+            
+            module = sys.modules[INDICATORS_PACKAGE]
             return hasattr(module, func_name)
-        except ImportError:
+        except ImportError as e:
+            print(f"[compiler] ImportError: {e}")
             return False
 
     if try_import():
@@ -45,11 +48,10 @@ def get_indicator_function_name(name: str) -> Optional[str]:
     # Not found -> Invoke Librarian
     print(f"⚠️ Indicator '{name}' not found. Invoking Librarian...")
     try:
-        success = add_indicator(name)
-        if success:
-            if try_import():
-                print(f"new indicator function '{func_name}' added successfully")
-                return func_name
+        new_ind_category = add_indicator(name)
+        if new_ind_category and try_import(new_ind_category):
+            print(f"new indicator function '{func_name}' added successfully to {INDICATORS_PACKAGE}.{new_ind_category}")
+            return func_name
     except Exception as e:
         print(f"Librarian error: {e}")
         
@@ -72,6 +74,7 @@ def _generate_indicator_calls(indicators: list[Indicator]) -> str:
         # 2. Generate Call Code
         # We use known patterns for standard indicators, and a generic fallback for new ones.
         
+        # TODO: dynamic signature for indicators
         args = ""
         # Standard Signatures
         match ind.type:

@@ -60,6 +60,8 @@ def backtester_node(state: AgentState):
         )
         return {"backtest_results": results, "error": None}
     except Exception as e:
+        print(f"Backtesting error: {e}")
+        exit(1)
         return {"error": f"Runtime error: {str(e)}"}
 
 def reviewer_node(state: AgentState):

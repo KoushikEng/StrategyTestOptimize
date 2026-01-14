@@ -30,11 +30,10 @@ Indicator Name: {name}
 ## Requirements
 1.  **Numba Optimized**: Decorate with `@njit`.
 2.  **Imports**:
-    -   `import numpy as np`
-    -   `from numba import njit`
+    -   Assume `import numpy as np`, `from numba import njit` and `from collections import namedtuple` are already present in the file.
     -   **Reuse Primitives**: IF you need SMA, EMA, ATR, or Rolling Std, you MUST import them:
         `from calculate.indicators.core import calculate_sma, calculate_ema, calculate_atr, _calculate_rolling_std`
-    -   Do NOT reimplement these primitives.
+    -   Do NOT reimplement these primitives. Assume they are already imported.
 3.  **Outputs**:
     -   If the indicator returns a single array, return `np.ndarray`.
     -   If it returns MULTIPLE arrays (e.g., Bollinger, Ichimoku), you MUST return a `collections.namedtuple`.
@@ -50,8 +49,7 @@ Indicator Name: {name}
         ```
     -   **Ichimoku Components**: tenkan, kijun, senkou_a, senkou_b, chikou.
 4.  **No Pandas**: Use purely `numpy` arrays.
-5.  **Imports**: Assume `import numpy as np`, `from numba import njit` and `from collections import namedtuple` are already present in the file.
-6.  **Style**: PEP8.
+5.  **Style**: PEP8.
 
 ## Output Format
 Return ONLY the Python code (imports + namedtuple def + function).
@@ -86,11 +84,16 @@ def generate_indicator_code(name: str) -> str:
     code = re.sub(r"```python\n|```", "", code).strip()
     return code
 
-def add_indicator(name: str) -> bool:
+def add_indicator(name: str) -> Optional[None]:
     """
     Main entry point: Generates and saves a new indicator.
     """
     print(f"📚 Librarian: Adding new indicator '{name}'...")
+    
+    # GUARDRAIL: Do not re-implement primitives that exist in core
+    if name.lower() in ["sma", "ema", "atr"]:
+        print(f"⚠️  Librarian: '{name}' is a primitive in calculate.indicators.core. Skipping generation.")
+        return "core"
     
     try:
         # 1. Classify
@@ -114,11 +117,11 @@ def add_indicator(name: str) -> bool:
             f.write(f"\nfrom .{category} import calculate_{name}")
             
         print(f"✅ Librarian: Added 'calculate_{name}' to {target_file}")
-        return True
+        return category
         
     except Exception as e:
         print(f"❌ Librarian Failed: {e}")
-        return False
+        return None
 
 if __name__ == "__main__":
     # Test

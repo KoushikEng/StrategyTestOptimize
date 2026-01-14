@@ -4,8 +4,7 @@ Volatility Indicators
 
 import numpy as np
 from numba import njit
-from calculate.indicators.core import calculate_sma, _calculate_rolling_std
-
+from .core import *
 from collections import namedtuple
 
 # Define outputs for structured access

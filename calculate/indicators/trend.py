@@ -4,8 +4,7 @@ Trend Indicators
 
 import numpy as np
 from numba import njit
-from calculate.indicators.core import calculate_atr
-
+from .core import *
 from collections import namedtuple
 
 ADXResult = namedtuple('ADXResult', ['adx', 'pdi', 'mdi'])
