@@ -87,7 +87,7 @@ def _generate_indicator_calls(indicators: list[Indicator]) -> str:
             # Add parameters with defaults
             for param_name, default_value in sig.defaults.items():
                 value = params.get(param_name, default_value)
-                arg_parts.append(str(value))
+                arg_parts.append(f"{param_name}={value}")
             
             args = ", ".join(arg_parts)
         else:

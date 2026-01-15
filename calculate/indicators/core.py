@@ -8,6 +8,7 @@ from numba import njit
 
 @njit
 def calculate_sma(data: np.ndarray, period: int) -> np.ndarray:
+    # SIGNATURE: args=["closes"] defaults={"period": 14}
     """
     Calculate the Simple Moving Average (SMA).
     """
@@ -27,6 +28,7 @@ def calculate_sma(data: np.ndarray, period: int) -> np.ndarray:
 
 @njit
 def calculate_ema(data: np.ndarray, period: int) -> np.ndarray:
+    # SIGNATURE: args=["closes"] defaults={"period": 14}
     """
     Calculate the Exponential Moving Average (EMA).
     """
@@ -41,6 +43,7 @@ def calculate_ema(data: np.ndarray, period: int) -> np.ndarray:
 
 @njit
 def calculate_atr(high: np.ndarray, low: np.ndarray, close: np.ndarray, period: int=14) -> np.ndarray:
+    # SIGNATURE: args=["highs", "lows", "closes"] defaults={"period": 14}
     """
     Calculate the Average True Range (ATR).
     """
@@ -67,6 +70,7 @@ def calculate_atr(high: np.ndarray, low: np.ndarray, close: np.ndarray, period: 
 
 @njit
 def _calculate_rolling_std(data: np.ndarray, window: int) -> np.ndarray:
+    # SIGNATURE: args=["closes"] defaults={"window": 20}
     """
     Calculate Rolling Standard Deviation.
     """

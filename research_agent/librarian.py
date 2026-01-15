@@ -80,13 +80,19 @@ Indicator Name: {name}
 Return ONLY the Python code (namedtuple def + function).
 Function name MUST be `calculate_{name}`.
 
-## IMPORTANT: At the END of your code, add this comment block with signature info:
--   e.g., # SIGNATURE: args=["closes"] defaults={{"period": 14}}
--   Replace the args list with the actual positional data arrays your function needs.
--   Example for OHLCV indicator: args=["highs", "lows", "closes", "volumes"]
--   Example for close-only: args=["closes"]
--   Replace defaults with any keyword parameters and their default values your function uses.
--   Example: defaults={{"period": 14, "num_std": 2.0}}
+## CRITICAL: Place a SIGNATURE comment on the FIRST LINE inside the function (before the docstring):
+```python
+@njit
+def calculate_example(closes, period=14):
+    # SIGNATURE: args=["closes"] defaults={{"period": 14}}
+    \"\"\"
+    Docstring here...
+    \"\"\"
+    ...
+```
+-   args = list of positional data arrays your function needs (e.g., ["highs", "lows", "closes"])
+-   defaults = dict of keyword parameters with their default values (e.g., {{"period": 14, "num_std": 2.0}})
+-   This MUST be the first line after `def ...:` and BEFORE the docstring.
 """
 
 CLASSIFY_TEMPLATE = """Classify the technical indicator '{name}' into one of these categories:

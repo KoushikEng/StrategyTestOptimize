@@ -12,6 +12,7 @@ BollingerBands = namedtuple('BollingerBands', ['middle', 'upper', 'lower'])
 
 @njit
 def calculate_bollinger_bands(data: np.ndarray, window: int, num_std: float = 2.0):
+    # SIGNATURE: args=["closes"] defaults={"window": 20, "num_std": 2.0}
     """
     Calculate Bollinger Bands. Returns NamedTuple(middle, upper, lower).
     """

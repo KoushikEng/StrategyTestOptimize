@@ -11,6 +11,7 @@ ADXResult = namedtuple('ADXResult', ['adx', 'pdi', 'mdi'])
 
 @njit
 def calculate_adx(high: np.ndarray, low: np.ndarray, close: np.ndarray, period: int = 14):
+    # SIGNATURE: args=["highs", "lows", "closes"] defaults={"period": 14}
     """
     Calculate ADX. Returns NamedTuple(adx, pdi, mdi).
     """
@@ -65,6 +66,7 @@ def calculate_adx(high: np.ndarray, low: np.ndarray, close: np.ndarray, period: 
 
 @njit
 def calculate_supertrend(high: np.ndarray, low: np.ndarray, close: np.ndarray, period: int=10, multiplier: float=3.0) -> np.ndarray:
+    # SIGNATURE: args=["highs", "lows", "closes"] defaults={"period": 10, "multiplier": 3.0}
     """
     Calculate Supertrend.
     """
@@ -104,13 +106,6 @@ def calculate_supertrend(high: np.ndarray, low: np.ndarray, close: np.ndarray, p
 
     return trend
 
-
-import numpy as np
-from numba import njit
-from collections import namedtuple
-# Reuse primitives (not used directly here but required by the specification)
-from calculate.indicators.core import calculate_sma, calculate_ema, calculate_atr, _calculate_rolling_std
-
 # Namedtuple for the result
 IchimokuResult = namedtuple(
     'IchimokuResult',
@@ -119,6 +114,7 @@ IchimokuResult = namedtuple(
 
 @njit
 def calculate_ichimoku(high: np.ndarray, low: np.ndarray, close: np.ndarray) -> IchimokuResult:
+    # SIGNATURE: args=["highs", "lows", "closes"] defaults={}
     """
     Calculate the Ichimoku Kinko Hyo indicator components.
 

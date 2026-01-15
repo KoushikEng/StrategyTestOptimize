@@ -11,6 +11,7 @@ MACDResult = namedtuple('MACDResult', ['macd', 'signal', 'hist'])
 
 @njit
 def calculate_macd(prices, fast=12, slow=26, signal=9):
+    # SIGNATURE: args=["closes"] defaults={"fast": 12, "slow": 26, "signal": 9}
     """
     Calculate MACD. Returns NamedTuple(macd, signal, hist).
     """
@@ -23,6 +24,7 @@ def calculate_macd(prices, fast=12, slow=26, signal=9):
 
 @njit
 def calculate_rsi(prices: np.ndarray, period: int = 14) -> np.ndarray:
+    # SIGNATURE: args=["closes"] defaults={"period": 14}
     """
     Calculate the Relative Strength Index (RSI).
     """
