@@ -59,7 +59,9 @@ def get_indicator_function_name(name: str) -> Optional[str]:
 
 
 def _generate_indicator_calls(indicators: list[Indicator]) -> str:
-    """Generate indicator calculation calls."""
+    """Generate indicator calculation calls using the signature registry."""
+    from research_agent.indicator_registry import get_signature
+    
     lines = []
     
     for ind in indicators:
@@ -71,39 +73,32 @@ def _generate_indicator_calls(indicators: list[Indicator]) -> str:
 
         params = ind.params
         
-        # 2. Generate Call Code
-        # We use known patterns for standard indicators, and a generic fallback for new ones.
+        # 2. Look up signature in registry
+        sig = get_signature(ind.type)
         
-        # TODO: dynamic signature for indicators
-        args = ""
-        # Standard Signatures
-        match ind.type:
-            case IndicatorType.SMA | IndicatorType.EMA | IndicatorType.RSI:
-                args = f"closes, {params.get('period', 14)}"
-            case IndicatorType.ATR | IndicatorType.ADX | "keltner": # Example of new ones
-                args = f"highs, lows, closes, {params.get('period', 14)}"
-            case IndicatorType.BOLLINGER:
-                args = f"closes, {params.get('period', 20)}, {params.get('std_dev', 2)}"
-            case IndicatorType.VWAP:
-                args = "highs, lows, closes, volume"
-            case IndicatorType.SUPERTREND:
-                args = f"highs, lows, closes, {params.get('period', 10)}, {params.get('multiplier', 3.0)}"
-            case IndicatorType.MACD:
-                args = f"closes, {params.get('fast', 12)}, {params.get('slow', 26)}, {params.get('signal', 9)}"
-            case _:
-                # Generic Fallback for unknown/new indicators
-                # Heuristic: if 'period' in params, pass it.
-                if 'period' in params:
-                    args = f"closes, {params['period']}"
-                else:
-                    args = "closes"
+        if sig:
+            # Build args from signature
+            arg_parts = []
+            
+            # Add positional data arrays
+            for arg in sig.args:
+                arg_parts.append(arg)
+            
+            # Add parameters with defaults
+            for param_name, default_value in sig.defaults.items():
+                value = params.get(param_name, default_value)
+                arg_parts.append(str(value))
+            
+            args = ", ".join(arg_parts)
+        else:
+            # Fallback for unregistered indicators (should be rare)
+            print(f"⚠️ No signature found for '{ind.type}', using generic fallback")
+            if 'period' in params:
+                args = f"closes, {params['period']}"
+            else:
+                args = "closes"
 
-        # Return unpacking
-        # PHASE 3 UPDATE: We use NamedTuples (or Objects) for composite indicators.
-        # So we do NOT unpack them here. We assign the result to the indicator name.
-        # The strategy logic (via Dot Notation) determines access.
-        
-        # Default Assignment
+        # 3. Generate assignment (supports namedtuple/object returns)
         lines.append(f"        {ind.name} = {fn_name}({args})")
 
     return "\n".join(lines)

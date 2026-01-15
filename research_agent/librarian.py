@@ -12,6 +12,30 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import StrOutputParser
 from research_agent.llm import llm
 from research_agent.tools import write_file
+from research_agent.indicator_registry import register_indicator
+
+
+def _register_from_code(name: str, code: str) -> None:
+    """
+    Parse the SIGNATURE comment from generated code and register it.
+    Expected format: # SIGNATURE: args=["closes"] defaults={"period": 14}
+    """
+    # Try to find the signature comment
+    match = re.search(r'# SIGNATURE:\s*args=(\[.*?\])\s*defaults=(\{.*?\})', code)
+    if match:
+        try:
+            args = eval(match.group(1))  # Safe: we control the LLM output format
+            defaults = eval(match.group(2))
+            register_indicator(name, args, defaults)
+            print(f"📝 Registered signature for '{name}': args={args}, defaults={defaults}")
+        except Exception as e:
+            print(f"⚠️ Could not parse signature for '{name}': {e}")
+            # Fallback: register with generic signature
+            register_indicator(name, ["closes"], {"period": 14})
+    else:
+        # No signature found, use heuristic
+        print(f"⚠️ No SIGNATURE comment found for '{name}', using generic signature")
+        register_indicator(name, ["closes"], {"period": 14})
 
 # Mapping categories to files
 CATEGORY_FILES = {
@@ -29,11 +53,12 @@ Indicator Name: {name}
 
 ## Requirements
 1.  **Numba Optimized**: Decorate with `@njit`.
-2.  **Imports**:
+2.  **Do not import**:
     -   Assume `import numpy as np`, `from numba import njit` and `from collections import namedtuple` are already present in the file.
     -   **Reuse Primitives**: IF you need SMA, EMA, ATR, or Rolling Std, you MUST import them:
-        `from calculate.indicators.core import calculate_sma, calculate_ema, calculate_atr, _calculate_rolling_std`
-    -   Do NOT reimplement these primitives. Assume they are already imported.
+        Assume these functions are already imported in the file:
+        `calculate_sma, calculate_ema, calculate_atr, _calculate_rolling_std`
+    -   Do NOT reimplement these primitives.
 3.  **Outputs**:
     -   If the indicator returns a single array, return `np.ndarray`.
     -   If it returns MULTIPLE arrays (e.g., Bollinger, Ichimoku), you MUST return a `collections.namedtuple`.
@@ -52,8 +77,16 @@ Indicator Name: {name}
 5.  **Style**: PEP8.
 
 ## Output Format
-Return ONLY the Python code (imports + namedtuple def + function).
+Return ONLY the Python code (namedtuple def + function).
 Function name MUST be `calculate_{name}`.
+
+## IMPORTANT: At the END of your code, add this comment block with signature info:
+-   e.g., # SIGNATURE: args=["closes"] defaults={{"period": 14}}
+-   Replace the args list with the actual positional data arrays your function needs.
+-   Example for OHLCV indicator: args=["highs", "lows", "closes", "volumes"]
+-   Example for close-only: args=["closes"]
+-   Replace defaults with any keyword parameters and their default values your function uses.
+-   Example: defaults={{"period": 14, "num_std": 2.0}}
 """
 
 CLASSIFY_TEMPLATE = """Classify the technical indicator '{name}' into one of these categories:
@@ -115,6 +148,9 @@ def add_indicator(name: str) -> Optional[None]:
         init_file = "calculate/indicators/__init__.py"
         with open(init_file, "a", encoding="utf-8") as f:
             f.write(f"\nfrom .{category} import calculate_{name}")
+        
+        # 5. Register signature in the registry
+        _register_from_code(name, code)
             
         print(f"✅ Librarian: Added 'calculate_{name}' to {target_file}")
         return category
