@@ -53,9 +53,9 @@ Indicator Name: {name}
 
 ## Requirements
 1.  **Numba Optimized**: Decorate with `@njit`.
-2.  **Do not import**:
+2.  **Do not add any imports**:
     -   Assume `import numpy as np`, `from numba import njit` and `from collections import namedtuple` are already present in the file.
-    -   **Reuse Primitives**: IF you need SMA, EMA, ATR, or Rolling Std, you MUST import them:
+    -   **Reuse Primitives**: IF you need SMA, EMA, ATR, or Rolling Std:
         Assume these functions are already imported in the file:
         `calculate_sma, calculate_ema, calculate_atr, _calculate_rolling_std`
     -   Do NOT reimplement these primitives.
@@ -77,7 +77,7 @@ Indicator Name: {name}
 5.  **Style**: PEP8.
 
 ## Output Format
-Return ONLY the Python code (namedtuple def + function).
+Return ONLY the Python code (namedtuple definition + function).
 Function name MUST be `calculate_{name}`.
 
 ## CRITICAL: Place a SIGNATURE comment on the FIRST LINE inside the function (before the docstring):
@@ -90,7 +90,7 @@ def calculate_example(closes, period=14):
     \"\"\"
     ...
 ```
--   args = list of positional data arrays your function needs (e.g., ["highs", "lows", "closes"])
+-   args = list of positional data arrays your function needs (e.g., ["highs", "lows", "closes", "volume"])
 -   defaults = dict of keyword parameters with their default values (e.g., {{"period": 14, "num_std": 2.0}})
 -   This MUST be the first line after `def ...:` and BEFORE the docstring.
 """
@@ -123,6 +123,45 @@ def generate_indicator_code(name: str) -> str:
     code = re.sub(r"```python\n|```", "", code).strip()
     return code
 
+def update_init(name: str, category: str) -> None:
+    """
+    Append the indicator to the __init__.py file.
+    """
+    func_name = "calculate_" + name
+    init_file = "calculate/indicators/__init__.py"
+    
+    if not os.path.exists(init_file):
+        with open(init_file, "w") as f:
+            f.write(f"from .{category} import {func_name}\n")
+        return
+
+    try:
+        with open(init_file, "r+") as f:
+            content = f.read()
+
+            pattern = rf"^from \.{category} import (.*)$"
+            match = re.search(pattern, content, re.MULTILINE)
+            
+            if not match:
+                f.write(f"\nfrom .{category} import {func_name}\n")
+                return
+            
+            match_line = match.group()
+            existing_func_names = match.group(1).strip()
+
+            if func_name in [n.strip() for n in existing_func_names.split(",")]:
+                # already exists
+                return
+            
+            replace_line = f"{match_line}, {func_name}"
+            content = re.sub(pattern, replace_line, content, 1, re.MULTILINE)
+            
+            f.seek(0)
+            f.write(content)
+            f.truncate()
+    except Exception as e:
+        print(f"Error updating __init__.py: {e}")
+
 def add_indicator(name: str) -> Optional[None]:
     """
     Main entry point: Generates and saves a new indicator.
@@ -151,9 +190,7 @@ def add_indicator(name: str) -> Optional[None]:
             f.write(f"\n\n{code}\n")
             
         # 4. Update __init__.py
-        init_file = "calculate/indicators/__init__.py"
-        with open(init_file, "a", encoding="utf-8") as f:
-            f.write(f"\nfrom .{category} import calculate_{name}")
+        update_init(name, category)
         
         # 5. Register signature in the registry
         _register_from_code(name, code)
