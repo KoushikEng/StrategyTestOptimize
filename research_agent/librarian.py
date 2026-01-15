@@ -46,62 +46,37 @@ CATEGORY_FILES = {
     "other": "calculate/indicators/other.py" # Fallback
 }
 
-CODE_GEN_TEMPLATE = """You are an expert Python Quantitative Developer specializing in Numba optimization.
-Your task is to implement a Technical Indicator function.
+CODE_GEN_TEMPLATE = """You are an expert Python Quantitative Developer specializing in Numba-optimized technical indicators.
 
 Indicator Name: {name}
 
-## Requirements
-1.  **Numba Optimized**: Decorate with `@njit`.
-2.  **Do not add any imports**:
-    -   Assume `import numpy as np`, `from numba import njit` and `from collections import namedtuple` are already present in the file.
-    -   **Reuse Primitives**: IF you need SMA, EMA, ATR, or Rolling Std:
-        Assume these functions are already imported in the file:
-        `calculate_sma, calculate_ema, calculate_atr, _calculate_rolling_std`
-    -   Do NOT reimplement these primitives.
-3.  **Outputs**:
-    -   If the indicator returns a single array, return `np.ndarray`.
-    -   If it returns MULTIPLE arrays (e.g., Bollinger, Ichimoku), you MUST return a `collections.namedtuple`.
-    -   Since `numba.njit` supports namedtuples, define it *outside* the function.
-    -   Example:
-        ```python
-        BbandsResult = namedtuple('BbandsResult', ['middle', 'upper', 'lower'])
-        
-        @njit
-        def calculate_bollinger(...):
-            ...
-            return BbandsResult(mid, up, low)
-        ```
-    -   **Ichimoku Components**: tenkan, kijun, senkou_a, senkou_b, chikou.
-4.  **No Pandas**: Use purely `numpy` arrays.
-5.  **Style**: PEP8.
+## CRITICAL RULES
+1. **NEVER add any import statements** - The file already has: `numpy as np`, `njit`, `namedtuple`, `calculate_sma`, `calculate_ema`, `calculate_atr`, `_calculate_rolling_std`.
+2. **Numba Optimized**: Decorate with `@njit`.
+3. **No Pandas**: Use purely `numpy` arrays.
+4. **Return Types**: Single array → `np.ndarray`. Multiple arrays → `namedtuple` (define *outside* function).
+5. **Function name**: `calculate_{name}`.
 
 ## Output Format
-Return ONLY the Python code (namedtuple definition + function).
-Function name MUST be `calculate_{name}`.
-
-## CRITICAL: Place a SIGNATURE comment on the FIRST LINE inside the function (before the docstring):
+Return ONLY Python code. Example for multi-output indicator:
 ```python
+BbandsResult = namedtuple('BbandsResult', ['middle', 'upper', 'lower'])
+
 @njit
-def calculate_example(closes, period=14):
-    # SIGNATURE: args=["closes"] defaults={{"period": 14}}
-    \"\"\"
-    Docstring here...
-    \"\"\"
-    ...
+def calculate_bollinger_bands(closes, period=20, num_std=2.0):
+    # SIGNATURE: args=["closes"] defaults={{"period": 20, "num_std": 2.0}}
+    \"\"\"Docstring here...\"\"\"
+    mid = calculate_sma(closes, period)
+    std = _calculate_rolling_std(closes, period)
+    return BbandsResult(mid, mid + num_std * std, mid - num_std * std)
 ```
--   args = list of positional data arrays your function needs (e.g., ["highs", "lows", "closes", "volume"])
--   defaults = dict of keyword parameters with their default values (e.g., {{"period": 14, "num_std": 2.0}})
--   This MUST be the first line after `def ...:` and BEFORE the docstring.
+
+**SIGNATURE comment** (FIRST LINE inside function, before docstring):
+- `args` = positional data arrays (e.g., `["highs", "lows", "closes"]`)
+- `defaults` = keyword params with defaults (e.g., `{{"period": 14}}`)
 """
 
-CLASSIFY_TEMPLATE = """Classify the technical indicator '{name}' into one of these categories:
-- trend
-- momentum
-- volatility
-- volume
-- other
-
+CLASSIFY_TEMPLATE = """Classify the technical indicator '{name}' into one of these categories: trend, momentum, volatility, volume, other.
 Return ONLY the category name.
 """
 

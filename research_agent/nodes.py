@@ -60,6 +60,7 @@ def backtester_node(state: AgentState):
             interval=state["interval"],
             download=state["download"]
         )
+        print("results", results)
         return {"backtest_results": results, "error": None}
     except Exception as e:
         print(f"Backtesting error: {e}")

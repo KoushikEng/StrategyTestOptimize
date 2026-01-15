@@ -1,0 +1,56 @@
+{
+  "name": "KeltnerChannelStrategy",
+  "description": "Trend following using a Keltner Channel with a 20‑period EMA and ATR multiplier of 2.",
+  "indicators": [
+    {
+      "name": "kc",
+      "type": "keltner_channel",
+      "params": {
+        "period": 20,
+        "atr_period": 20,
+        "multiplier": 2
+      }
+    }
+  ],
+  "entry_conditions": [
+    {
+      "expression": "close[i] > kc.upper[i] and (kc.upper[i] - kc.lower[i]) > (kc.upper[i-1] - kc.lower[i-1]) and close[i] <= kc.middle[i]",
+      "description": "Long entry: price pulls back to middle EMA after uptrend."
+    },
+    {
+      "expression": "close[i] < kc.lower[i] and (kc.upper[i] - kc.lower[i]) > (kc.upper[i-1] - kc.lower[i-1]) and close[i] >= kc.middle[i]",
+      "description": "Short entry: price pulls back to middle EMA after downtrend."
+    }
+  ],
+  "exit_conditions": [
+    {
+      "expression": "close[i] < kc.lower[i]",
+      "description": "Long exit: price closes below lower band."
+    },
+    {
+      "expression": "close[i] > kc.upper[i]",
+      "description": "Short exit: price closes above upper band."
+    }
+  ],
+  "position_type": "both",
+  "risk_management": {
+    "stop_loss": "kc.middle[i]",
+    "take_profit": "0.02",
+    "trailing_stop": "kc.middle[i]",
+    "max_position_size": null
+  },
+  "optimization_params": {
+    "period": [
+      10,
+      30
+    ],
+    "atr_period": [
+      10,
+      30
+    ],
+    "multiplier": [
+      1,
+      3
+    ]
+  }
+}
