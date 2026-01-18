@@ -1,6 +1,9 @@
 numba
 numpy
 prettytable
-pygmo
 pytz
-pandas
+langchain_core
+langchain_openai
+langgraph
+pydantic
+python-dotenv
