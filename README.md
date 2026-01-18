@@ -23,7 +23,7 @@ This project allows you to autonomously generate, backtest, and optimize trading
 
     ```bash
     # Create and activate the environment (assuming requirements are handled manually or via existing env)
-    # If starting from scratch, you'd typically need: python=3.9 numpy pandas numba pygmo
+    # If starting from scratch, you'd typically need: python=3.9 numpy numba pygmo
     conda activate pygmo_env
     
     # Install Python dependencies
