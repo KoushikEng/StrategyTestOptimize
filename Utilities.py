@@ -20,7 +20,7 @@ from numpy.typing import NDArray
 from types import ModuleType
 
 
-DataTuple: TypeAlias = Tuple[str, NDArray, NDArray, NDArray, NDArray, NDArray, NDArray, NDArray]
+DataTuple: TypeAlias = Tuple[str, NDArray, NDArray, NDArray, NDArray, NDArray, NDArray]
 
 INTERVAL_MAP = {
     "1": Interval.in_1_minute,
@@ -65,16 +65,21 @@ def slippage(number: float) -> float:
     return number + random.uniform(-0.05, 0.05)
 
 def read_from_csv(symbol: str, path: str) -> DataTuple:
-    """Read CSV into NumPy arrays."""
+    """Read CSV into NumPy arrays with new timestamp format."""
     data = np.genfromtxt(f'{path+symbol}.csv', delimiter=',', dtype=None, names=True, encoding='utf-8')
-    dates = np.array([datetime.strptime(d, '%Y-%m-%d').date() for d in data['date']])
-    times = np.array([datetime.strptime(t, '%H:%M:%S').time() for t in data['time']])
-    opens = data['Open']
-    highs = data['High']
-    lows = data['Low']
-    closes = data['Close']
-    volume = data['Volume']
-    return symbol, dates, times, opens, highs, lows, closes, volume
+    
+    # Read timestamps as int64 (raw Unix timestamps)
+    timestamps = data['timestamp'].astype(np.int64)
+    
+    # Read price and volume data as numba-compatible types
+    opens = data['Open'].astype(np.float64)
+    highs = data['High'].astype(np.float64)
+    lows = data['Low'].astype(np.float64)
+    closes = data['Close'].astype(np.float64)
+    volume = data['Volume'].astype(np.int64)
+    
+    # Return updated 7-element DataTuple structure
+    return symbol, timestamps, opens, highs, lows, closes, volume
 
 def read_column_from_csv(filename: str, column_name: str) -> list[str]:
     """Read a specific column from a CSV file."""
@@ -156,30 +161,25 @@ def hist_download(symbols: list[str], interval: Interval = Interval.in_5_minute,
     finally:
         t_pool.shutdown()
 
-def process_symbol_data(data: list[list], path: str, symbol: str, separate_time_column: bool = True, tz: pytz.BaseTzInfo = pytz.timezone(config.TZ)) -> None:
-    """Process symbol data.
+def process_symbol_data(data: list[list], path: str, symbol: str, separate_time_column: bool = False, tz: pytz.BaseTzInfo = pytz.timezone(config.TZ)) -> None:
+    """Process symbol data with raw Unix timestamp storage.
     
     Args:
         data (list[list]): List of lists containing symbol data.
         path (str): Path to save the processed data.
         symbol (str): Symbol to process.
-        separate_time_column (bool, optional): Whether to separate time column. Defaults to True.
-        tz (pytz.BaseTzInfo, optional): Timezone for which to process data. Defaults to pytz.timezone(config.TZ).
+        separate_time_column (bool, optional): Deprecated parameter, kept for compatibility. Defaults to False.
+        tz (pytz.BaseTzInfo, optional): Timezone for which to process data. Only used during download, not storage. Defaults to pytz.timezone(config.TZ).
     """
     try:
-        for i in range(len(data)):
-            dt = datetime.fromtimestamp(data[i][0], tz=tz)
-            date = datetime.fromtimestamp(data[i][0]).strftime('%Y-%m-%d %H:%M:%S')
-            data[i][0] = date
-            if separate_time_column: # If separate_time_column is True, add a time column for selected interval less than 1 day
-                date = dt.date().strftime('%Y-%m-%d')
-                data[i][0] = date
-                time = dt.time().strftime('%H:%M:%S')
-                data[i].insert(1, time)
-    
+        # Store raw Unix timestamps without any string conversions
+        # data[i][0] already contains the Unix timestamp as integer
+        # No datetime string formatting or timezone conversion during storage
+        
         with open(f"{path+symbol}.csv", 'w', newline='') as file:
             writer = csv.writer(file)
-            writer.writerow(['date', 'time', 'Open', 'High', 'Low', 'Close', 'Volume'])  # Write header
-            writer.writerows(data)  # Write all rows at once
+            # New CSV header format with single timestamp column
+            writer.writerow(['timestamp', 'Open', 'High', 'Low', 'Close', 'Volume'])
+            writer.writerows(data)  # Write all rows at once with raw timestamps
     except Exception as e:
         print(f"Error processing symbol {symbol}: {e}")
