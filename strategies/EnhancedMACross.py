@@ -81,14 +81,6 @@ class EnhancedMACross(Base):
     6. Uses built-in position management
     """
     
-    def __init__(self):
-        super().__init__()
-        self.fast_ma = None
-        self.slow_ma = None
-        self.use_ema = False
-        self.fast_period = 10
-        self.slow_period = 30
-    
     def init(self):
         """
         Initialize strategy indicators and parameters.
@@ -96,8 +88,12 @@ class EnhancedMACross(Base):
         This method is called once before processing any bars.
         All indicators are pre-calculated here for efficiency.
         """
+        self.use_ema = False
+        self.fast_period = 10
+        self.slow_period = 30
+        
         # Get full price data for indicator calculation
-        closes = self.get_full_data_array('close')
+        closes = self.data.Close
         
         # Choose MA type based on strategy parameter
         ma_func = exponential_moving_average if self.use_ema else simple_moving_average
