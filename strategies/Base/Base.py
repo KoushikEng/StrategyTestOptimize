@@ -181,6 +181,11 @@ class Base(ABC):
             
             # Call strategy's next() method
             self.next()
+            
+            # Handle exit at end of data
+            if i == data_length - 1 and self._position_manager.is_in_position():
+                self.sell()
+                
         
         # Get final results
         trade_returns = self._position_manager.get_trade_returns()
