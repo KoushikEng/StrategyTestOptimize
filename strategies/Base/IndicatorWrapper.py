@@ -13,29 +13,46 @@ class IndicatorWrapper:
         self._values = values
         self._context = context
     
-    def __getitem__(self, index: int):
-        """Access indicator value with negative indexing support."""
-        if not isinstance(index, int):
-            raise TypeError(f"Index must be integer, got {type(index)}")
-        
+    def __getitem__(self, key: int | slice) -> np.float64 | np.ndarray[np.float64]:
+        """Access indicator value(s) with negative indexing and slice support."""
         current_idx = self._context.get_current_index()
         
-        if index < 0:
-            # Negative indexing: -1 is current bar, -2 is previous bar, etc.
-            actual_index = current_idx + index + 1
+        if isinstance(key, int):
+            # Single index access
+            if key < 0:
+                # Negative indexing: -1 is current bar, -2 is previous bar, etc.
+                actual_index = current_idx + key + 1
+            else:
+                # Positive indexing: 0 is first bar, 1 is second bar, etc.
+                actual_index = key
+            
+            # Prevent look-ahead bias and out-of-bounds access
+            if actual_index < 0:
+                raise IndexError(f"Index {key} would access data before start of series")
+            if actual_index > current_idx:
+                raise IndexError(f"Index {key} would access future data (current bar: {current_idx})")
+            if actual_index >= len(self._values):
+                raise IndexError(f"Index {key} out of bounds for indicator length {len(self._values)}")
+            
+            return self._values[actual_index]
+        
+        elif isinstance(key, slice):
+            # Slice access
+            start, stop, step = key.indices(current_idx + 1)
+            
+            # Ensure we don't access future data
+            if stop > current_idx + 1:
+                stop = current_idx + 1
+            
+            # Ensure we don't access beyond available data
+            if stop > len(self._values):
+                stop = len(self._values)
+            
+            # Return sliced array
+            return self._values[start:stop:step].copy()
+        
         else:
-            # Positive indexing: 0 is first bar, 1 is second bar, etc.
-            actual_index = index
-        
-        # Prevent look-ahead bias and out-of-bounds access
-        if actual_index < 0:
-            raise IndexError(f"Index {index} would access data before start of series")
-        if actual_index > current_idx:
-            raise IndexError(f"Index {index} would access future data (current bar: {current_idx})")
-        if actual_index >= len(self._values):
-            raise IndexError(f"Index {index} out of bounds for indicator length {len(self._values)}")
-        
-        return self._values[actual_index]
+            raise TypeError(f"Index must be integer or slice, got {type(key)}")
     
     def __len__(self) -> int:
         """Return the length up to current index."""
