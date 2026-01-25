@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import Tuple, Callable, Any
+from typing import Tuple, Callable, Any, Union
 from numpy.typing import NDArray
 import numpy as np
 from dataclasses import dataclass
 from .StrategyContext import StrategyContext
 from .PositionManager import PositionManager
 from .DataAccessor import DataAccessor
-from .IndicatorWrapper import IndicatorWrapper
+from .IndicatorWrapper import IndicatorWrapper, CompositeIndicatorWrapper
 
 # Import DataTuple type for better type hints
 try:
@@ -45,7 +45,7 @@ class Base(ABC):
         """Process the current bar."""
         pass
     
-    def I(self, func: Callable, *args, **kwargs) -> IndicatorWrapper:
+    def I(self, func: Callable, *args, **kwargs) -> Union[IndicatorWrapper, CompositeIndicatorWrapper]:
         """Register and calculate an indicator."""
         if not callable(func):
             raise TypeError(f"Indicator function must be callable, got {type(func)}")
@@ -83,23 +83,54 @@ class Base(ABC):
                 raise RuntimeError("Cannot register indicators before data is set")
             
             # Call the indicator function with the provided arguments
-            values = func(*args, **kwargs)
+            result = func(*args, **kwargs)
             
-            if not isinstance(values, np.ndarray):
-                values = np.array(values)
+            # Handle different return types
+            if isinstance(result, np.ndarray):
+                # Single array - wrap directly
+                values = result
+                wrapper = self._create_indicator_wrapper(values)
+                
+            elif isinstance(result, (tuple, list)):
+                # Multiple arrays - create wrapper for each
+                if len(result) == 0:
+                    raise ValueError("Indicator function returned empty tuple/list")
+                
+                # Check if it's a namedtuple
+                if hasattr(result, '_fields'):
+                    # Named tuple - create wrapper with field access
+                    wrapper = CompositeIndicatorWrapper(result, self._context)
+                else:
+                    # Regular tuple/list - create wrapper with index access
+                    wrapper = CompositeIndicatorWrapper(result, self._context)
+                
+            elif isinstance(result, dict):
+                # Dictionary of arrays - create wrapper with key access
+                wrapper = CompositeIndicatorWrapper(result, self._context)
+                
+            else:
+                # Try to convert to numpy array
+                values = np.array(result)
+                wrapper = self._create_indicator_wrapper(values)
             
-            # Validate indicator length matches data length
-            data_length = self._context._data_length
-            if len(values) != data_length:
-                raise ValueError(f"Indicator length {len(values)} doesn't match data length {data_length}")
-            
-            # Create and cache the indicator wrapper
-            wrapper = IndicatorWrapper(values.astype(np.float64), self._context)
+            # Cache and return the wrapper
             self._indicators[key] = wrapper
             return wrapper
             
         except Exception as e:
             raise RuntimeError(f"Failed to register indicator {func_name}: {str(e)}")
+    
+    def _create_indicator_wrapper(self, values: np.ndarray) -> IndicatorWrapper:
+        """Create a single IndicatorWrapper with validation."""
+        if not isinstance(values, np.ndarray):
+            values = np.array(values)
+        
+        # Validate indicator length matches data length
+        data_length = self._context._data_length
+        if len(values) != data_length:
+            raise ValueError(f"Indicator length {len(values)} doesn't match data length {data_length}")
+        
+        return IndicatorWrapper(values.astype(np.float64), self._context)
     
     def buy(self, size: float = 1.0):
         """Open a long position."""
