@@ -3,6 +3,7 @@
     - [x] Improve librarian to use existing core indicators when required for new indicators
 - [ ] Add human in the loop review for translation of text to spec to improve accuracy of spec
 - [x] Improve system prompts
-- [ ] Improve Base strategy, strategy generation compiler, and reviewer
+- [x] Improve Base strategy
+- [ ] strategy generation compiler, and reviewer
 - [ ] Add constrained autonomy
 - [ ] Make web app for strategy testing
