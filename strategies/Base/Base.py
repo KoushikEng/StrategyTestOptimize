@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import Tuple, Callable, Any, Union
 from numpy.typing import NDArray
 import numpy as np
-from dataclasses import dataclass
+from dataclasses import dataclass, astuple
 from .StrategyContext import StrategyContext
 from .PositionManager import PositionManager
 from .DataAccessor import DataAccessor
@@ -17,7 +17,7 @@ except ImportError:
     DataTuple = Any
 
 
-@dataclass
+@dataclass(frozen=True) #  Frozen=True for immutable results
 class StrategyResults:
     """Results from strategy execution."""
     returns: np.ndarray
@@ -185,7 +185,13 @@ class Base(ABC):
             # Handle exit at end of data
             if i == data_length - 1 and self._position_manager.is_in_position():
                 self.sell()
-                
+    
+    def _process(self, data: DataTuple, **kwargs) -> StrategyResults:
+        """
+        Process the data using the enhanced strategy interface.
+        """
+        #  Execute the strategy
+        self._execute_strategy(data, **kwargs)
         
         # Get final results
         trade_returns = self._position_manager.get_trade_returns()
@@ -204,21 +210,21 @@ class Base(ABC):
             win_rate=win_rate,
             total_trades=total_trades
         )
-    
-    def process(self, data: DataTuple, **kwargs) -> Tuple[NDArray, NDArray, float, int]:
-        """
-        Process the data using the enhanced strategy interface.
         
+    def run(self, data: DataTuple, **kwargs) -> Tuple[NDArray, NDArray, float, int]:
+        """
+        Run the strategy on the given data.
+
         Args:
-            data (DataTuple): The data to process.
-                             Format: (symbol, timestamps, opens, highs, lows, closes, volume)
+            data (DataTuple): The data to run the strategy on.
             **kwargs: Strategy parameters.
-            
+
         Returns:
             Tuple[np.ndarray, np.ndarray, float, int]: Tuple containing (returns, equity_curve, win_rate, no_of_trades)
         """
-        results = self._execute_strategy(data, **kwargs)
-        return results.returns, results.equity_curve, results.win_rate, results.total_trades
+        # Run the strategy
+        results = self._process(data, **kwargs)
+        return astuple(results)
     
     @abstractmethod
     def validate_params(self, **kwargs) -> bool:
