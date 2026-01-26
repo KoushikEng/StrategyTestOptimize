@@ -12,3 +12,5 @@ data/
 # !strategies/Base.py
 
 # research_agent/runs/specs/
+.hypothesis/
+.vscode

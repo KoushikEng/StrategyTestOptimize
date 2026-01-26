@@ -4,7 +4,7 @@ Main module for the strategy testing and optimization.
 This module provides the main entry point for the strategy testing and optimization.
 """
 
-from typing import Type
+from typing import Type, List
 from Utilities import hist_download, read_from_csv, get_strategy
 from multiprocessing import Pool, cpu_count
 from multiprocessing.pool import ThreadPool
@@ -15,18 +15,12 @@ import numpy as np
 from calculate.risk_metrics import calculate_sharpe, calculate_sortino, calculate_max_drawdown
 from strategies.Base import Base
 from functools import partial
+from collections import namedtuple
 
-def convert_to_double_value_pair(data):
-    result = []
-    for i in range(0, len_half:=math.ceil(len(data)/2)):
-        if i + 1 < len(data):
-            result.append(data[i] + ['|'] + data[len_half + i])
-        else:
-            result.append(data[i] + ['|'])
-            
-    return result
 
-def process_result(symbol, retval):
+BacktestResult = namedtuple('BacktestResult', ['symbol', 'net_profit', 'win_rate', 'sharpe', 'sortino', 'max_drawdown', 'trades'])
+
+def process_result(symbol, retval) -> BacktestResult:
     returns, equity_curve, win_rate, no_of_trades = retval
     
     net_profit = (equity_curve[-1] - 1) * 100 if len(equity_curve) > 0 else 0.0
@@ -34,9 +28,9 @@ def process_result(symbol, retval):
     sortino = calculate_sortino(returns)
     max_dd = calculate_max_drawdown(returns) * 100
     
-    return [symbol, net_profit, win_rate * 100, sharpe, sortino, max_dd, no_of_trades]
+    return BacktestResult(symbol, net_profit, win_rate * 100, sharpe, sortino, max_dd, no_of_trades)
 
-def run_backtest(symbols: list, strategy_name: str, interval: str = '5', download: bool = False, multiprocess: bool = False, **kwargs) -> list:
+def run_backtest(symbols: list, strategy_name: str, interval: str = '5', download: bool = False, multiprocess: bool = False, **kwargs) -> List[BacktestResult]:
     """
     Run backtest on a list of symbols.
     
@@ -47,11 +41,9 @@ def run_backtest(symbols: list, strategy_name: str, interval: str = '5', downloa
         download (bool, optional): Whether to download data. Defaults to False.
         multiprocess (bool, optional): Whether to use multiprocessing. Defaults to False.
         **kwargs: Strategy parameters.
-        
     Returns:
-        list: List of result rows [Symbol, Net Profit %, Win Rate %, Sharpe, Sortino, Max DD %, Trades]
+        list: List of namedtuple result rows (`Symbol`, `Net Profit %`, `Win Rate %`, `Sharpe`, `Sortino`, `Max DD %`, `Trades`)
     """
-    
     # Resolve Interval
     from Utilities import get_interval
     interval_enum = get_interval(interval)
@@ -85,7 +77,7 @@ def run_backtest(symbols: list, strategy_name: str, interval: str = '5', downloa
     # Execute
     execution_results = []
     
-    run_with_kwargs = partial(strategy_instance.process, **kwargs)
+    run_with_kwargs = partial(strategy_instance.run, **kwargs)
     
     if multiprocess:
         # Use Process Pool for CPU bound strategy execution
@@ -164,8 +156,9 @@ if __name__ == '__main__':
     results_table.field_names = ["Symbol", "Net Profit %", "Win Rate %", "Sharpe", "Sortino", "Max DD %", "Trades"]
     results_table.float_format = ".2"
     
-    for row in results:
-        results_table.add_row(row)
+    #  Sort by Net Profit %
+    results = sorted(results, key=lambda x: x.net_profit, reverse=True)
+    results_table.add_rows(results)
         
     print(results_table)
     

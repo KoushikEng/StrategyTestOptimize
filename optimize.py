@@ -50,7 +50,7 @@ class StrategyOptimizationProblem:
             return (np.array([0.0]), np.array([1.0]), 0.0, 0)
             
         try:
-            return self.strategy.process(self.data, **kwargs)
+            return self.strategy.run(self.data, **kwargs)
         except Exception:
             return (np.array([0.0]), np.array([1.0]), 0.0, 0)
 
