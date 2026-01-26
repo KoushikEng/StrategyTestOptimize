@@ -1,0 +1,28 @@
+{
+  "enabled": true,
+  "name": "Auto Documentation Update",
+  "description": "Automatically updates documentation in /docs folder when Python source files or configuration files are modified",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "*.py",
+      "*.md",
+      "*.json",
+      "*.txt",
+      "*.yaml",
+      "*.yml",
+      "*.toml",
+      "*.cfg",
+      "*.ini",
+      "requirements.txt",
+      "setup.py",
+      "setup.cfg",
+      "pyproject.toml"
+    ]
+  },
+  "then": {
+    "type": "askAgent",
+    "prompt": "A source file has been modified. Please review the changes and update the relevant documentation in the /docs folder to reflect any new features, API changes, configuration updates, or architectural modifications. Focus on keeping the documentation accurate and comprehensive."
+  }
+}
