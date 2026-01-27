@@ -4,6 +4,12 @@
 - [ ] Add human in the loop review for translation of text to spec to improve accuracy of spec
 - [x] Improve system prompts
 - [x] Improve Base strategy
-- [ ] strategy generation compiler, and reviewer
-- [ ] Add constrained autonomy
+- [x] Update strategy generation compiler
+- [ ] Update Base strategy:
+    - [ ] use kwargs for strategy parameters (like ema period, etc.)
+    - [ ] add both position type support or handle short entry error (optional for now)
+- [ ] solve how the translator will know the existing indicator names and parameter names, and time util functions, and what if there are same name parameters from different indicators in optimization parameters, how they will named in StrategySpec
+- [ ] update translator/compiler to stop initiating unused indicators in init() (optional)
+- [ ] Improve reviewer
 - [ ] Make web app for strategy testing
+- [ ] Add constrained autonomy
