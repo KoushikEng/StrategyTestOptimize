@@ -61,6 +61,16 @@ class DataAccessor:
         self._original_timestamps = timestamps
         self._original_volume = volume
     
+    def __getattribute__(self, name):
+        """Override __getattribute__ to automatically return values from IndicatorWrapper instances."""
+        attr = super().__getattribute__(name)
+        
+        # Check if it's an IndicatorWrapper instance
+        if isinstance(attr, IndicatorWrapper):
+            return attr.values  #  Return the underlying values instead of the wrapper
+        
+        return attr
+    
     def get_current_bar_data(self) -> dict:
         """Get current bar's OHLCV data."""
         return {

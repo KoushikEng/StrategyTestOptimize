@@ -179,8 +179,12 @@ class Base(ABC):
         for i in range(data_length):
             self._context.update_index(i)
             
-            # Call strategy's next() method
-            self.next()
+            try:
+                # Call strategy's next() method
+                self.next()
+            except Exception as e:
+                print(e)
+                print("Continuing...")
             
             # Handle exit at end of data
             if i == data_length - 1 and self._position_manager.is_in_position():
