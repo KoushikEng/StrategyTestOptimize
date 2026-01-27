@@ -44,6 +44,7 @@ class Condition(BaseModel):
     """A single condition for entry or exit."""
     expression: str = Field(..., description="Condition expression, e.g., 'fast_ema > slow_ema'")
     description: Optional[str] = Field(None, description="Human-readable description")
+    position_type: Optional[Literal["long", "short"]] = Field(None, description="Specific position type for this condition (overrides strategy-level position_type)")
 
 
 class RiskManagement(BaseModel):
